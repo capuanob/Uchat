@@ -17,8 +17,6 @@ def run():
         events = sel.select(timeout=None)
         for key, mask in events:
             if key.fileobj is sys.stdin:
-                client.send_message(key.fileobj)
+                client.send_message()
             else:  # Must be an updated socket
                 client.handle_connection(key.fileobj, sel)
-
-
