@@ -1,0 +1,52 @@
+QMainWindow {
+        background-color: #ff2a2c31;
+}
+
+QLabel {
+    color: white;
+}
+
+QPushButton {
+    color: white;
+    background-color: #7796CB;
+    border-radius: 5px;
+}
+
+QPushButton:hover {
+    background-color: #5f84c2;
+}
+
+/* LANDING WINDOW */
+
+QLabel#create-account-welcome {
+    color: white;
+    font-size: 35px;
+    font-weight: bold;
+}
+
+QLabel#sub-lbl {
+    color: #ffb6b8bb;
+    font-size: 15px;
+}
+
+QWidget#create-account-top {
+    background-color: #ff36393f;
+    padding-bottom: 60px;
+    border-radius: 5px;
+}
+
+QWidget#create-account-top > QLineEdit {
+    background-color: #ff303338;
+    background-color: #ff303338;
+    color: #ffb6b8bb;
+}
+
+QWidget > QLabel {
+    color: #ffb6b8bb;
+    font-size: 10px;
+}
+
+QPushButton#create-account-btn {
+    margin-top: 15px;
+    padding: 10px;
+}

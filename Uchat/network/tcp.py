@@ -19,9 +19,8 @@ class TcpSocket:
 
         # Actual TCP socket being abstracted upon
         self.__sock = sock if sock else socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
         # Address of socket; '' means the socket should bind to any appropriate interface
-        self.__address = ('', port if port else 1)
+        self.__address = ('', port if port else self.__sock.getsockname()[1])
 
     def listen(self):
         """
@@ -39,6 +38,7 @@ class TcpSocket:
         :param conn_addr: Address of host to connect to
         """
         self.__sock.connect(conn_addr)
+        print('New connection: \n L {} -> R {}'.format(self.get_local_addr(), self.get_remote_addr()))
 
     def send_message(self, message: str):
         """
@@ -52,20 +52,12 @@ class TcpSocket:
 
         :return Receives all bytes from the socket's buffer and returns their representative string
         """
-        buffer_contents = bytes()
-        curr_read = bytes()
-
-        while curr_read:
-            curr_read = self.__sock.recv(4096)
-            if curr_read:
-                buffer_contents += curr_read
-
-        return str(curr_read, "ascii")
+        # TODO: Serialize and deserialize message objects, send length first (8 bytes?) and build rest using that size
+        return self.__sock.recv(4096).decode("ascii")
 
     def accept_conn(self) -> TcpSocket:
         new_sock, addr = self.__sock.accept()
-        print('Accepting new connection from {}'.format(addr))
-        return TcpSocket(sock=new_sock)
+        return TcpSocket(port=addr[1], sock=new_sock)
 
     def fileno(self) -> int:
         """
@@ -88,7 +80,10 @@ class TcpSocket:
 
         :return: the socket's peer name, associated with the socket's remote address
         """
-        return self.__sock.getpeername()
+        try:
+            return self.__sock.getpeername()
+        except socket.error as e:
+            return None
 
     def free(self):
         """
