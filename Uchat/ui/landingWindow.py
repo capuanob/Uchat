@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QSize, Qt, QEvent, QObject
-from PyQt5.QtGui import QFont
+from PyQt5.QtCore import QSize, Qt, QEvent, QObject, QRegExp
+from PyQt5.QtGui import QFont, QRegExpValidator
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton
 from typing import Optional
 
@@ -8,10 +8,14 @@ class LandingWindow(QWidget):
     def __init__(self, parent: Optional[QWidget], has_account: bool):
         super(QWidget, self).__init__(parent)
         self.__layout_manager = QVBoxLayout(self)
+
         if has_account:
             self.__build_main_window()
         else:
+            self.username_field = None
+            self.color_field = None
             self.__build_account_creation_screen()
+
 
     def __build_account_creation_screen(self):
         """
@@ -30,7 +34,9 @@ class LandingWindow(QWidget):
         sub_lbl = QLabel('A secure and stateless, peer-to-peer messaging client')
         sub_lbl.setObjectName('sub-lbl')
 
-        username_field = QLineEdit(top_widget)
+        self.username_field = QLineEdit(top_widget)
+        # Only allow alphanumeric usernames between length 3 and 12
+        self.username_field.setValidator(QRegExpValidator(QRegExp('[0-9a-zA-Z]{3,20}'), self.username_field))
         username_lbl = QLabel('USERNAME')
 
         self.color_field = QLineEdit('#', parent=top_widget)
@@ -45,7 +51,7 @@ class LandingWindow(QWidget):
         top_widget_manager.addWidget(sub_lbl)
         top_widget_manager.addSpacing(15)
         top_widget_manager.addWidget(username_lbl)
-        top_widget_manager.addWidget(username_field)
+        top_widget_manager.addWidget(self.username_field)
         top_widget_manager.addWidget(color_lbl)
         top_widget_manager.addWidget(self.color_field)
         top_widget_manager.addWidget(create_btn)
