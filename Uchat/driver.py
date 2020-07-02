@@ -1,22 +1,34 @@
 import selectors
 import sys
 from Uchat.client import Client
+from Uchat.ui.application import Application
 
 sel = selectors.DefaultSelector()
 
 
 def run():
-    other_host = input("Enter peer's IPv4: ")
+    Application()
 
-    # Set up selector for I/o multiplexing
-    client = Client(other_host)
-    sel.register(client.get_listening_socket(), selectors.EVENT_READ, data=None)
+    # Handle debug vs normal operation set-up
+    if len(sys.argv) > 1 and sys.argv[1] == 'DEBUG':
+        # Set up for debugging mode
+        other_host = ('127.0.0.1', int(sys.argv[4]))
+        client = Client(sel, debug_other_addr=other_host, debug_l_port=int(sys.argv[3]))
+    else:
+        other_host = input("Enter peer's IPv4: ")
+
+        # Set up selector for I/o multiplexing
+        client = Client(sel, other_host)
+
     sel.register(sys.stdin, selectors.EVENT_READ, data=None)
 
     while True:
-        events = sel.select(timeout=None)
-        for key, mask in events:
-            if key.fileobj is sys.stdin:
-                client.send_message()
-            else:  # Must be an updated socket
-                client.handle_connection(key.fileobj, sel)
+        try:
+            events = sel.select(timeout=None)
+            for key, mask in events:
+                if key.fileobj is sys.stdin:
+                    client.send_message()
+                else:  # Must be an updated socket
+                    client.handle_connection(key.fileobj)
+        except:
+            client.destroy()
