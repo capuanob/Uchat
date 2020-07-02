@@ -1,13 +1,11 @@
 import selectors
 import sys
 from Uchat.client import Client
-from Uchat.ui.application import Application
 
 sel = selectors.DefaultSelector()
 
 
 def run():
-    Application()
 
     # Handle debug vs normal operation set-up
     if len(sys.argv) > 1 and sys.argv[1] == 'DEBUG':
