@@ -1,8 +1,12 @@
 from __future__ import annotations
 import socket
 
-
 # TODO: ADD EXCEPTION HANDLING TO THESE FUNCTIONS
+from struct import Struct
+from typing import Optional
+
+from Uchat.network.messages.message import GreetingMessage, MessageType, Message, ChatMessage, FarewellMessage
+
 
 class TcpSocket:
     """
@@ -40,20 +44,36 @@ class TcpSocket:
         self.__sock.connect(conn_addr)
         print('New connection: \n L {} -> R {}'.format(self.get_local_addr(), self.get_remote_addr()))
 
-    def send_message(self, message: str):
+    def send_bytes(self, message: bytes):
         """
 
-        :param message: Contents to send via an already connected socket
+        :param message: Send provided bytes via an already connected socket
         """
-        self.__sock.sendall(bytes(message, 'utf-8'))
+        self.__sock.sendall(message)
 
-    def recv_message(self) -> str:
+    def recv_greeting(self, greeting: bytes) -> GreetingMessage:
         """
 
         :return Receives all bytes from the socket's buffer and returns their representative string
         """
-        # TODO: Serialize and deserialize message objects, send length first (8 bytes?) and build rest using that size
-        return self.__sock.recv(4096).decode("ascii")
+        greeting_message = GreetingMessage.from_bytes(greeting)
+
+        return greeting_message
+
+    def recv_message(self) -> Optional[Message]:
+        message_len = Struct('I').unpack(self.__sock.recv(4))[0]
+        message_bytes = self.__sock.recv(message_len)
+        message_type = MessageType(Struct('B').unpack(message_bytes[:1])[0])
+
+        # Parse bytes to rebuild message
+        if message_type is MessageType.GREETING:
+            return GreetingMessage.from_bytes(message_bytes)
+        elif message_type is MessageType.CHAT:
+            return ChatMessage.from_bytes(message_bytes)
+        elif message_type is MessageType.FAREWELL:
+            return FarewellMessage.from_bytes(message_bytes)
+        else:
+            return None
 
     def accept_conn(self) -> TcpSocket:
         new_sock, addr = self.__sock.accept()
