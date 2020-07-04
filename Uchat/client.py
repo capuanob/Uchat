@@ -1,7 +1,12 @@
+from datetime import datetime
+
+from Uchat.conversation import Conversation, ConversationState
+from Uchat.network.messages.message import GreetingMessage, ChatMessage, MessageType, FarewellMessage, Message
 from Uchat.network.tcp import TcpSocket
 from sys import stdin
 import selectors
 from typing import Dict
+
 LISTENING_PORT: int = 52789  # Socket for a Uchat client to listen for incoming connections on
 
 """
@@ -11,8 +16,8 @@ Has the ability to send and receive messages to other clients
 
 
 class Client:
-    def __init__(self, selector, other_host: str = None, debug_l_port: int = LISTENING_PORT,
-                 debug_other_addr: (str, int) = None):
+    def __init__(self, selector, username: str, profile_hex_code: str, other_host: str = None,
+                 debug_l_port: int = LISTENING_PORT, debug_other_addr: (str, int) = None):
         """
         Constructs a new client
 
@@ -23,41 +28,22 @@ class Client:
         global LISTENING_PORT
 
         LISTENING_PORT = debug_l_port
+
+        self.username = username
+        self.profile_hex_code = profile_hex_code[1:]
+
+        # Set up conversation, with whom this chat is with
+        other_address: (str, int) = debug_other_addr if debug_other_addr else (other_host, LISTENING_PORT)
+        self.__conversation = Conversation(other_address)
+
         self.__listening_socket = TcpSocket(LISTENING_PORT)  # Create ipv4 TCP socket
-        self.__other_address: (str, int) = debug_other_addr if debug_other_addr else (other_host, LISTENING_PORT)
         self.__selector = selector  # Reference to selector that is driving I/O multiplexing
+
         # Store a mapping from a TCP socket's remote address to itself
         self.__chat_pack: Dict[(int, str), TcpSocket] = dict()
 
         self.__listening_socket.listen()  # Set up listening socket to listen on its address
         self.__selector.register(self.__listening_socket, selectors.EVENT_READ, data=None)
-
-    def send_message(self):
-        """
-        Gets a line of input from stdin and sends it to another client
-        """
-
-        # Get the message to be sent (standard input)
-        message = stdin.readline()
-        print('Sending to {}'.format(self.__other_address))
-        # TODO: Figure out how to differentiate multiple clients
-        if self.__other_address not in self.__chat_pack:
-            # Create a new TCP socket to communicate with other_address
-            child_sock = TcpSocket()
-            child_sock.connect(self.__other_address)
-            self.__selector.register(child_sock, selectors.EVENT_READ, data=None)
-            self.__update_chat_pack(self.__other_address, child_sock)
-
-        self.__chat_pack[self.__other_address].send_message(message)
-
-    def get_message(self, comm_sock: TcpSocket):
-        """
-        Reads all available bytes from a peer's socket and displays the message to stdout
-        """
-
-        # Read from communication socket
-        msg = comm_sock.recv_message()
-        print('From {}: {}'.format(comm_sock.get_remote_addr(), msg), end='')
 
     def accept_connection(self, listening_sock: TcpSocket):
         """
@@ -67,9 +53,9 @@ class Client:
         new_sock = listening_sock.accept_conn()  # We must have had bound and listened to get here
         self.__selector.register(new_sock, selectors.EVENT_READ, data=None)  # Add to watched sockets
         self.__update_chat_pack(new_sock.get_remote_addr(), new_sock)
-        self.__other_address = new_sock.get_remote_addr()
+        self.__conversation.set_connected_addr(new_sock.get_remote_addr())
         print('Accepting new connection \n L {} to R {}'.format(new_sock.get_local_addr(), new_sock.get_remote_addr()))
-        self.get_message(new_sock)
+        self.handle_receipt(new_sock)
 
     def handle_connection(self, updated_sock: TcpSocket):
         """
@@ -81,7 +67,7 @@ class Client:
         if updated_sock is self.__listening_socket:  # We have an incoming connection
             self.accept_connection(updated_sock)
         else:
-            self.get_message(updated_sock)
+            self.handle_receipt(updated_sock)
 
     def __update_chat_pack(self, address: (str, int), socket: TcpSocket):
         """
@@ -104,3 +90,98 @@ class Client:
         self.__listening_socket.free()
         for addr, sock in self.__chat_pack.items():
             sock.free()
+
+    # Message Handling
+
+    def handle_greeting_receipt(self, msg):
+        # Save user's information locally
+        self.__conversation.set_username(msg.username)
+        self.__conversation.set_color(msg.get_hex_code())
+        # Poll user for accept / decline
+
+        # Send response
+        print('Receiving greeting')
+
+        if not msg.ack:
+            self.send_greeting(True, True)
+
+    def handle_chat_receipt(self, msg):
+        print('{}: {} says {}'.format(datetime.fromtimestamp(msg.time_stamp), self.__conversation.get_peer_username(),
+                                      msg.message), end='')
+
+    def handle_farewell_receipt(self, msg):
+        print('Receiving farewell')
+        self.destroy()
+
+    def handle_greeting_response_receipt(self, msg):
+        status = '' if msg.acceptsConversation else 'not'
+        print('User has {} accepted your conversation!'.format(status))
+
+    def handle_receipt(self, comm_sock: TcpSocket):
+        msg = comm_sock.recv_message()
+        pre_expecting_types = self.__conversation.expecting_types()
+        self.__conversation.add_message(msg, False)
+
+        if msg and msg.m_type in pre_expecting_types:
+            if msg.m_type is MessageType.GREETING:
+                self.handle_greeting_receipt(msg)
+            elif msg.m_type is MessageType.CHAT:
+                self.handle_chat_receipt(msg)
+            elif msg.m_type is MessageType.FAREWELL:
+                self.handle_farewell_receipt(msg)
+            else:
+                print('Handling unknown message type: {}'.format(msg.m_type))
+        else:
+            print('Handling unexpected message type: {}'.format(msg.m_type))
+
+
+    # Message sending
+    def send_greeting(self, ack: bool, wants_to_talk: bool = True):
+        """
+        Used to send a greeting message to the peer, as a means of starting the conversation
+        """
+        greeting = GreetingMessage(int(self.profile_hex_code, 16), self.username, ack, wants_to_talk)
+        print('Sending greeting')
+        self.send(greeting)
+
+    def send_chat(self):
+        """
+        Gets a line of input from stdin and sends it to another client as a wrapped ChatMessage
+        """
+        message = stdin.readline()
+
+        if self.__conversation.get_state() is ConversationState.ACTIVE:
+            # As we are in an active conversation, safe to create message
+            chat_message = ChatMessage(message)
+            print('Sending chat')
+            self.send(chat_message)
+        elif self.__conversation.get_state() is ConversationState.INACTIVE:
+            self.send_greeting(False)
+        else:
+            print('Will not send {} on an {} conversation.'.format(message, self.__conversation.get_state()))
+            return
+
+    def send_farewell(self):
+        if self.__conversation.get_state() is ConversationState.ACTIVE:
+            farewell_msg = FarewellMessage()
+            self.send(farewell_msg)
+            self.destroy()
+        else:
+            print('Will not send farewell on {} conversation state'.format(self.__conversation.get_state()))
+
+    def send(self, message: Message):
+        """
+        Generic function, used to send bytes to the peer
+        """
+        message_bytes = message.to_bytes()
+        self.__conversation.add_message(message, True)
+
+        other_address = self.__conversation.get_connected_addr()
+        if other_address not in self.__chat_pack:
+            # Create a new TCP socket to communicate with other_address
+            child_sock = TcpSocket()
+            child_sock.connect(other_address)
+            self.__selector.register(child_sock, selectors.EVENT_READ, data=None)
+            self.__update_chat_pack(other_address, child_sock)
+
+        self.__chat_pack[other_address].send_bytes(message_bytes)
