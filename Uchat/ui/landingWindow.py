@@ -1,10 +1,16 @@
-from PyQt5.QtCore import Qt, QRegExp, QPropertyAnimation, QRect, QEasingCurve
-from PyQt5.QtGui import QRegExpValidator, QPalette, QBrush, QColor
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton
 from typing import Optional, Set
 
-from Uchat.helper.logger import write_to_data_file, DataType
+from PyQt5.QtCore import Qt, QRegExp
+from PyQt5.QtGui import QRegExpValidator
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout
+
+from Uchat.MessageContext import DEBUG_MESSAGES
+from Uchat.helper.logger import write_to_data_file, DataType, FileName
+from Uchat.model.account import Account
 from Uchat.ui.colorScheme import DarkModeColorScheme
+from Uchat.ui.main.ChatAreaView import ChatAreaView
+from Uchat.ui.main.ConversationView import ConversationView
+from Uchat.ui.main.ProfilePhotoView import ProfilePhotoView
 
 
 def validate_line_edit(widget: QLineEdit, validator) -> bool:
@@ -19,15 +25,21 @@ def validate_line_edit(widget: QLineEdit, validator) -> bool:
 class LandingWindow(QWidget):
     def __init__(self, parent: Optional[QWidget], has_account: bool):
         super(QWidget, self).__init__(parent)
+
         self.__layout_manager = QVBoxLayout(self)
         self.widgets_with_errors: Set[QWidget] = set()
 
         if has_account:
+            self.conversation_view: ChatAreaView = ChatAreaView(self, DEBUG_MESSAGES)
+            # self.send_view: MessageSendView = MessageSendView(self)
+
             self.__build_main_window()
         else:
             self.username_field: QLineEdit = QLineEdit()
             self.color_field: QLineEdit = QLineEdit()
             self.create_btn: QPushButton = QPushButton()
+            self.profile_photo_preview = ProfilePhotoView(self)
+
             self.__build_account_creation_screen()
 
     def __build_account_creation_screen(self):
@@ -41,30 +53,37 @@ class LandingWindow(QWidget):
         top_widget.setObjectName('create-account-top')
         top_widget_manager = QVBoxLayout(top_widget)
 
+        profile_manager = QHBoxLayout()
+        # Set up welcome labels and profile photo preview
+        label_manager = QVBoxLayout()
         welcome_lbl = QLabel('Welcome to UChat.', self)
         welcome_lbl.setObjectName('create-account-welcome')
+        profile_manager.addLayout(label_manager)
+        profile_manager.addWidget(self.profile_photo_preview, 0, Qt.AlignRight | Qt.AlignVCenter)
+        profile_manager.addSpacing(10)
 
         sub_lbl = QLabel('A secure and stateless, peer-to-peer messaging client')
         sub_lbl.setObjectName('sub-lbl')
+        label_manager.addWidget(welcome_lbl)
+        label_manager.addWidget(sub_lbl)
 
         self.username_field = QLineEdit(top_widget)
         # Only allow alphanumeric usernames between length 3 and 12
         self.username_field.setValidator(QRegExpValidator(QRegExp('[0-9a-zA-Z]{3,20}'), self.username_field))
-        self.username_field.textChanged.connect(self.username_did_change)
+        self.username_field.textChanged.connect(self.profile_photo_did_change)
 
         username_lbl = QLabel('USERNAME')
 
         self.color_field = QLineEdit('#', parent=top_widget)
         self.color_field.setInputMask('\#HHHHHH')
-        self.color_field.textChanged.connect(self.profile_color_did_change)
+        self.color_field.textChanged.connect(self.profile_photo_did_change)
         color_lbl = QLabel('PROFILE COLOR')
         self.create_btn = QPushButton("Create", parent=top_widget)
         self.create_btn.setObjectName('create-account-btn')
         self.create_btn.clicked.connect(self.create_btn_pressed)
 
         # Layout top widget
-        top_widget_manager.addWidget(welcome_lbl)
-        top_widget_manager.addWidget(sub_lbl)
+        top_widget_manager.addLayout(profile_manager, 0)
         top_widget_manager.addSpacing(15)
         top_widget_manager.addWidget(username_lbl)
         top_widget_manager.addWidget(self.username_field)
@@ -78,23 +97,16 @@ class LandingWindow(QWidget):
         self.__layout_manager.addStretch()
 
     def __build_main_window(self):
-        pass
+        self.__layout_manager.addWidget(ConversationView(self))
 
     # Event Handlers
-    def profile_color_did_change(self, text: str):
+    def profile_photo_did_change(self):
         self.remove_error_outline(self.sender())
-        if len(text) == 4 or len(text) == 7:
-            self.color_field.setStyleSheet('color: ' + text + ';')
-        else:
-            self.color_field.setStyleSheet('color: white;')
-
-    def username_did_change(self, text: str):
-        self.remove_error_outline(self.sender())
+        self.profile_photo_preview.update_label(self.username_field.text(), self.color_field.text())
 
     def create_btn_pressed(self):
 
         # Get validation state of forms
-        username = self.username_field.text()
         is_valid_username = validate_line_edit(self.username_field, QRegExpValidator)
 
         hex_code = self.color_field.text()
@@ -104,7 +116,7 @@ class LandingWindow(QWidget):
             # Save to global data log and proceed
             self.save_user_data()
         else:
-            # Blink invalid fields red twice and add error message to them
+            # Blink invalid fields red twice and add error msg to them
             if not is_valid_hex_code:
                 self.outline_on_error(self.color_field)
             if not is_valid_username:
@@ -122,8 +134,5 @@ class LandingWindow(QWidget):
 
     # Data saving
     def save_user_data(self):
-        data = [
-            ('username', self.username_field.text()),
-            ('hex_code', self.color_field.text())
-        ]
-        write_to_data_file(DataType.USER, 'global.txt', data)
+        user_data = Account(self.username_field.text(), self.color_field.text())
+        write_to_data_file(DataType.USER, FileName.GLOBAL, user_data)

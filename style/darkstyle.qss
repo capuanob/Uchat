@@ -35,6 +35,12 @@ QWidget#create-account-top {
     border-radius: 5px;
 }
 
+QLineEdit, QPlainTextEdit {
+    background-color: #ff303338;
+    background-color: #ff303338;
+    color: #ffb6b8bb;
+}
+
 QWidget#create-account-top > QLineEdit {
     background-color: #ff303338;
     background-color: #ff303338;
@@ -48,5 +54,35 @@ QWidget > QLabel {
 
 QPushButton#create-account-btn {
     margin-top: 15px;
+    padding: 10px;
+}
+
+/* SCROLL BARS */
+QScrollBar, QScrollArea {
+    background-color: transparent;
+}
+
+QScrollBar::handle, QPlainTextEdit::handle {
+    background: #46484b;
+    opacity: 0.1;
+    border-radius: 5px;
+}
+
+QScrollBar::add-line, QScrollBar::sub-line {
+      border: none;
+      background: none;
+}
+
+QScrollArea::corner {
+    border: none;
+}
+
+
+/* MESSAGE VIEW */
+
+QWidget#message-view > QLabel#chat-bubble {
+    font-size: 20px;
+    color: white;
+    border-radius: 10px;
     padding: 10px;
 }

@@ -65,7 +65,7 @@ class TcpSocket:
         message_bytes = self.__sock.recv(message_len)
         message_type = MessageType(Struct('B').unpack(message_bytes[:1])[0])
 
-        # Parse bytes to rebuild message
+        # Parse bytes to rebuild mag
         if message_type is MessageType.GREETING:
             return GreetingMessage.from_bytes(message_bytes)
         elif message_type is MessageType.CHAT:

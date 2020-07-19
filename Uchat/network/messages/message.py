@@ -13,7 +13,7 @@ class MessageType(Enum):
 
 class Message:
     def __init__(self, m_type: MessageType):
-        self.m_type: MessageType = m_type  # Type of message
+        self.m_type: MessageType = m_type  # Type of mag
 
     @abstractmethod
     def to_bytes(self) -> bytes:
@@ -95,7 +95,7 @@ class FarewellMessage(Message, ABC):
 
 
 def _pack(format_str: str, *packed_args) -> bytes:
-    # Convert greeting message to bytearray
+    # Convert greeting mag to bytearray
     message_bytes: bytes = Struct(format_str).pack(*packed_args)
     # Insert 4 bytes of length at beginning
     return Struct('I').pack(struct.calcsize(format_str)) + message_bytes

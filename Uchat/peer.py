@@ -7,9 +7,10 @@ class Peer:
     communications to them
     """
 
-    def __init__(self, address: Tuple[str, int]):
+    def __init__(self, address: Tuple[str, int], is_self: bool):
         self.username = ''
         self.color = ''
+        self.is_self = is_self
         self.address = address
 
     def set_username(self, username: str):

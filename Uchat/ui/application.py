@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QSize, QPoint
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
-
+from Uchat.helper.logger import get_user_account_data, DataType, FileName
 from Uchat.ui.landingWindow import LandingWindow
 
 import sys
@@ -39,6 +39,8 @@ class Application:
         self.__main_win.move(get_center_pos(self.__main_win))
         self.__main_win.show()
 
-        landing_window = LandingWindow(self.__main_win, False)
+        # Load central widget
+        account = get_user_account_data()
+        landing_window = LandingWindow(self.__main_win, account is not None)
         self.__main_win.setCentralWidget(landing_window)
         sys.exit(self.__app.exec_())

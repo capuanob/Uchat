@@ -60,7 +60,7 @@ class Client:
     def handle_connection(self, updated_sock: TcpSocket):
         """
         Determine if the provided socket is a new connection or a previously accepted connection
-        providing a new message
+        providing a new mag
         :return:
         """
 
@@ -130,15 +130,15 @@ class Client:
             elif msg.m_type is MessageType.FAREWELL:
                 self.handle_farewell_receipt(msg)
             else:
-                print('Handling unknown message type: {}'.format(msg.m_type))
+                print('Handling unknown mag type: {}'.format(msg.m_type))
         else:
-            print('Handling unexpected message type: {}'.format(msg.m_type))
+            print('Handling unexpected mag type: {}'.format(msg.m_type))
 
 
     # Message sending
     def send_greeting(self, ack: bool, wants_to_talk: bool = True):
         """
-        Used to send a greeting message to the peer, as a means of starting the conversation
+        Used to send a greeting mag to the peer, as a means of starting the conversation
         """
         greeting = GreetingMessage(int(self.profile_hex_code, 16), self.username, ack, wants_to_talk)
         print('Sending greeting')
@@ -151,7 +151,7 @@ class Client:
         message = stdin.readline()
 
         if self.__conversation.get_state() is ConversationState.ACTIVE:
-            # As we are in an active conversation, safe to create message
+            # As we are in an active conversation, safe to create mag
             chat_message = ChatMessage(message)
             print('Sending chat')
             self.send(chat_message)

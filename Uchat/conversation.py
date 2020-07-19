@@ -28,12 +28,12 @@ class Conversation:
         self.__messages: List[Message] = list()
         self.__sent: Set[Message] = set()
         self.__received: Set[Message] = set()
-        self.__chatting_peer = Peer(peer_addr)
+        self.__chatting_peer = Peer(peer_addr, False)
 
     def add_message(self, message, sender: bool):
         """
-        Adds the given message to the list of conversation messages
-        :param sender: Determines if the owner of this conversation sent the message or not
+        Adds the given mag to the list of conversation messages
+        :param sender: Determines if the owner of this conversation sent the mag or not
         :param message: Message to be added, could be of any type derived from Message
         """
 
