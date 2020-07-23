@@ -5,6 +5,7 @@ from PyQt5.QtGui import QRegExpValidator
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout
 
 from Uchat.MessageContext import DEBUG_MESSAGES
+from Uchat.conversation import Conversation
 from Uchat.helper.logger import write_to_data_file, DataType, FileName
 from Uchat.model.account import Account
 from Uchat.ui.colorScheme import DarkModeColorScheme
@@ -97,7 +98,7 @@ class LandingWindow(QWidget):
         self.__layout_manager.addStretch()
 
     def __build_main_window(self):
-        self.__layout_manager.addWidget(ConversationView(self))
+        self.__layout_manager.addWidget(ConversationView(self, Conversation(self, ('', 3000))))
 
     # Event Handlers
     def profile_photo_did_change(self):

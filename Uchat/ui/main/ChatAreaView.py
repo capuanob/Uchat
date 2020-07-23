@@ -21,6 +21,7 @@ class ChatAreaView(QWidget):
         self.contexts_shown = 0 # Tracks how many contexts
 
         self.__layout_manager = QVBoxLayout(self)
+
         # Scroll Area
         self.__scroll_area = QScrollArea()  # Used to scroll through messages
         for context in message_contexts:
@@ -71,3 +72,11 @@ class ChatAreaView(QWidget):
             self.contexts_shown = len(self.contexts)
 
         QAbstractScrollArea.resizeEvent(self.__scroll_area, e)
+
+    def displayed_messages(self):
+        """
+        Returns the message contexts that have been added to ChatArea
+        :return:
+        """
+
+        return map(lambda x: x.msg, self.contexts)

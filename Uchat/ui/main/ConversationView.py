@@ -3,15 +3,16 @@ from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPlainTextEdit
 
 from Uchat.MessageContext import DEBUG_MESSAGES, MessageContext, _DEBUG_SELF
+from Uchat.conversation import Conversation
 from Uchat.network.messages.message import ChatMessage
 from Uchat.ui.main.ChatAreaView import ChatAreaView
 from Uchat.ui.main.MessageSendView import MessageSendView
 
-
 class ConversationView(QWidget):
-    def __init__(self, parent: QWidget):
+    def __init__(self, parent: QWidget, conversation: Conversation):
         super().__init__(parent)
 
+        self.__conversation = conversation
         self.__layout_manager = QVBoxLayout(self)
 
         self.__chat_area = ChatAreaView(self, DEBUG_MESSAGES)
@@ -35,10 +36,10 @@ class ConversationView(QWidget):
         text_field = self.__send_view.text_edit()
 
         if e.key() == Qt.Key_Return:
-            message = text_field.toPlainText()
+            message: str = text_field.toPlainText()
 
             if not message:  # Don't want to allow sending of empty messages
-                return
+                return 
 
             # Clear message send view
             self.__send_view.text_edit().clear()
@@ -51,3 +52,5 @@ class ConversationView(QWidget):
             self.__chat_area.update_with(chat_context)
         else:
             QPlainTextEdit.keyPressEvent(text_field, e)
+
+
