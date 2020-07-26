@@ -1,8 +1,7 @@
 from datetime import datetime
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel
-
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLabel, QItemDelegate
 from Uchat.MessageContext import MessageContext
 from Uchat.ui.main.ProfilePhotoView import ProfilePhotoView
 
@@ -12,12 +11,14 @@ class MessageView(QWidget):
     Used for displaying a chat message and it's associated profile photo
     """
 
+    # Super class overrides
+
     def __init__(self, parent: QWidget, context: MessageContext):
         super().__init__(parent)
         self.setObjectName('message-view')
 
         # Chat bubble
-        self.__chat_bubble = QLabel(context.msg.message, self)
+        self.__chat_bubble = QLabel(context.msg.message)
         self.__chat_bubble.setObjectName("chat-bubble")
         self.__chat_bubble.setWordWrap(True)
         self.__chat_bubble.setFixedHeight(self.__chat_bubble.sizeHint().height())  # Needed to prevent text clipping
@@ -28,8 +29,8 @@ class MessageView(QWidget):
         self.__chat_bubble.setToolTip("Sent {}".format(readable_date))
 
         # Profile view
-        self.__sender_profile_view = ProfilePhotoView(self, context.sender.username, context.sender.color, radius=20)
-        self.__layout_manager = QHBoxLayout(self)
+        self.__sender_profile_view = ProfilePhotoView(parent, context.sender.username, context.sender.color, radius=20)
+        self.__layout_manager = QHBoxLayout(parent)
 
         # Layout in proper order
         self.manage_layout(context)

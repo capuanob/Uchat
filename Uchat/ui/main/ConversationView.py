@@ -1,56 +1,49 @@
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QKeyEvent
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPlainTextEdit
+from typing import Optional
+from PyQt5.QtWidgets import QListView, QWidget
+from Uchat import MessageContext
+from Uchat.conversation import Conversation, debug_conversation
 
-from Uchat.MessageContext import DEBUG_MESSAGES, MessageContext, _DEBUG_SELF
-from Uchat.conversation import Conversation
-from Uchat.network.messages.message import ChatMessage
-from Uchat.ui.main.ChatAreaView import ChatAreaView
-from Uchat.ui.main.MessageSendView import MessageSendView
 
 class ConversationView(QWidget):
-    def __init__(self, parent: QWidget, conversation: Conversation):
+    """
+    View
+
+    Displays an active conversation, including  all previous messages and a text field for sending new
+    messages to the recipient
+    """
+
+    def __init__(self, parent: Optional[QWidget]):
         super().__init__(parent)
 
-        self.__conversation = conversation
-        self.__layout_manager = QVBoxLayout(self)
+        self._message_list = QListView(self)  # View used to display conversation messages (the model)
+        self._conversation_model = debug_conversation()  # Model, contains messages that need to be displayed
 
-        self.__chat_area = ChatAreaView(self, DEBUG_MESSAGES)
-        self.__send_view = MessageSendView(self)
+        self.setup_ui()
 
-        # Layout widgets
-        self.__layout_manager.addStretch(1)
-        self.__layout_manager.addWidget(self.__chat_area.central_widget())
-        self.__layout_manager.addWidget(self.__send_view)
-
-        # Set up event listeners and responders
-        self.__send_view.text_edit().keyPressEvent = self.key_pressed
-
-    def key_pressed(self, e: QKeyEvent):
+    def setup_ui(self):
         """
-        As QPlainTextEdit doesn't natively support enter key response, this function prevents the user from typing the
-        'enter' key and sends a message on its press instead
-        :param e: QKeyEvent raised by key press
-        :return: void
+        Builds UI for display
         """
-        text_field = self.__send_view.text_edit()
 
-        if e.key() == Qt.Key_Return:
-            message: str = text_field.toPlainText()
+        self._message_list.setModel(self._conversation_model)  # Connect model
+        self._message_list.setLayoutMode(QListView.Batched)  # Display as needed
+        self._message_list.setBatchSize(10)  # Number of messages to display
+        self._message_list.setFlow(QListView.TopToBottom)  # Display vertically
+        self._message_list.setResizeMode(QListView.Adjust)  # Items laid out every time view is resized
+        self._message_list.show()
+    # Slots
 
-            if not message:  # Don't want to allow sending of empty messages
-                return 
+    def send_message(self, context: MessageContext):
+        """
+        Used to send a new message in the conversation
+        :param context: Context of new chat message to be sent
+        """
+        pass
 
-            # Clear message send view
-            self.__send_view.text_edit().clear()
+    # Signals
 
-            # Send message over network
-            chat_msg = ChatMessage(message)
-            chat_context = MessageContext(chat_msg, _DEBUG_SELF)
-
-            # Update UI with new message
-            self.__chat_area.update_with(chat_context)
-        else:
-            QPlainTextEdit.keyPressEvent(text_field, e)
-
-
+    def message_received(self):
+        """
+        Updates UI to reflect an incoming message that needs to be displayed
+        """
+        pass

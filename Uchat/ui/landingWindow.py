@@ -4,12 +4,10 @@ from PyQt5.QtCore import Qt, QRegExp
 from PyQt5.QtGui import QRegExpValidator
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout
 
-from Uchat.MessageContext import DEBUG_MESSAGES
 from Uchat.conversation import Conversation
 from Uchat.helper.logger import write_to_data_file, DataType, FileName
 from Uchat.model.account import Account
 from Uchat.ui.colorScheme import DarkModeColorScheme
-from Uchat.ui.main.ChatAreaView import ChatAreaView
 from Uchat.ui.main.ConversationView import ConversationView
 from Uchat.ui.main.ProfilePhotoView import ProfilePhotoView
 
@@ -31,10 +29,8 @@ class LandingWindow(QWidget):
         self.widgets_with_errors: Set[QWidget] = set()
 
         if has_account:
-            self.conversation_view: ChatAreaView = ChatAreaView(self, DEBUG_MESSAGES)
-            # self.send_view: MessageSendView = MessageSendView(self)
-
-            self.__build_main_window()
+            self.conversation_view = ConversationView(self)
+            self.__layout_manager.addWidget(self.conversation_view)
         else:
             self.username_field: QLineEdit = QLineEdit()
             self.color_field: QLineEdit = QLineEdit()
@@ -96,9 +92,6 @@ class LandingWindow(QWidget):
         # Layout landing window
         self.__layout_manager.addWidget(top_widget, alignment=Qt.AlignCenter)
         self.__layout_manager.addStretch()
-
-    def __build_main_window(self):
-        self.__layout_manager.addWidget(ConversationView(self, Conversation(self, ('', 3000))))
 
     # Event Handlers
     def profile_photo_did_change(self):

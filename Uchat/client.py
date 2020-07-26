@@ -1,11 +1,15 @@
 from datetime import datetime
 
+from PyQt5.QtCore import QObject
+
 from Uchat.conversation import Conversation, ConversationState
 from Uchat.network.messages.message import GreetingMessage, ChatMessage, MessageType, FarewellMessage, Message
 from Uchat.network.tcp import TcpSocket
 from sys import stdin
 import selectors
 from typing import Dict
+
+from Uchat.peer import Peer
 
 LISTENING_PORT: int = 52789  # Socket for a Uchat client to listen for incoming connections on
 
@@ -15,7 +19,7 @@ Has the ability to send and receive messages to other clients
 """
 
 
-class Client:
+class Client(QObject):
     def __init__(self, selector, username: str, profile_hex_code: str, other_host: str = None,
                  debug_l_port: int = LISTENING_PORT, debug_other_addr: (str, int) = None):
         """
@@ -29,8 +33,7 @@ class Client:
 
         LISTENING_PORT = debug_l_port
 
-        self.username = username
-        self.profile_hex_code = profile_hex_code[1:]
+        self.info = Peer(('', LISTENING_PORT), username, profile_hex_code[1:])
 
         # Set up conversation, with whom this chat is with
         other_address: (str, int) = debug_other_addr if debug_other_addr else (other_host, LISTENING_PORT)
@@ -150,24 +153,24 @@ class Client:
         """
         message = stdin.readline()
 
-        if self.__conversation.get_state() is ConversationState.ACTIVE:
+        if self.__conversation.state() is ConversationState.ACTIVE:
             # As we are in an active conversation, safe to create mag
             chat_message = ChatMessage(message)
             print('Sending chat')
             self.send(chat_message)
-        elif self.__conversation.get_state() is ConversationState.INACTIVE:
+        elif self.__conversation.state() is ConversationState.INACTIVE:
             self.send_greeting(False)
         else:
-            print('Will not send {} on an {} conversation.'.format(message, self.__conversation.get_state()))
+            print('Will not send {} on an {} conversation.'.format(message, self.__conversation.state()))
             return
 
     def send_farewell(self):
-        if self.__conversation.get_state() is ConversationState.ACTIVE:
+        if self.__conversation.state() is ConversationState.ACTIVE:
             farewell_msg = FarewellMessage()
             self.send(farewell_msg)
             self.destroy()
         else:
-            print('Will not send farewell on {} conversation state'.format(self.__conversation.get_state()))
+            print('Will not send farewell on {} conversation state'.format(self.__conversation.state()))
 
     def send(self, message: Message):
         """

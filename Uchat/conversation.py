@@ -1,14 +1,17 @@
 from enum import Enum
-from typing import List, Set
+from typing import List, Set, Tuple
 
-from Uchat.network.messages.message import Message, FarewellMessage, GreetingMessage, \
-    MessageType
+from typing import Optional, Any
+from PyQt5.QtCore import QObject, QAbstractListModel, QModelIndex, QVariant, Qt
+
+from Uchat.MessageContext import MessageContext
+from Uchat.network.messages.message import FarewellMessage, GreetingMessage, MessageType, ChatMessage
 from Uchat.peer import Peer
 
 
 class ConversationState(Enum):
     """
-    If viewing a conversation as a Finite State Automota, this would be it's current state
+    If viewing a conversation as a Finite State Automata, this would be it's current state
     See docs for the respective FSM for reference
     """
     INACTIVE = 0  # Newly created conversation, no action has been taken by any participant
@@ -17,44 +20,70 @@ class ConversationState(Enum):
     CLOSED = 3  # The conversation is permanently closed, whether to declination or a participant leaving after chatting
 
 
-class Conversation:
+class Conversation(QAbstractListModel):
     """
     A conversation is held between two or more clients. A client can be engaged in multiple, simultaneous conversations.
     Responsible for tracking messages sent during current conversation, it's participants, and it's status
     """
 
-    def __init__(self, peer_addr: (str, int)):
+    def __init__(self, parent: Optional[QObject], peer_addr: (str, int)):
+        super().__init__(parent)
+
         self._state: ConversationState = ConversationState.INACTIVE
-        self.__messages: List[Message] = list()
-        self.__sent: Set[Message] = set()
-        self.__received: Set[Message] = set()
+        self.__ctrl_messages: List[MessageContext] = list()  # Tracks every non-chat message part of conversation
+        self.__chat_messages: List[MessageContext] = list()  # Tracks every chat message part of conversation
+
         self.__chatting_peer = Peer(peer_addr, False)
 
-    def add_message(self, message, sender: bool):
+    # Model overrides
+    def rowCount(self, parent: QModelIndex = ...) -> int:
+        """
+        Display as many rows as there are chat messages in list of messages
+        :param parent:
+        :return:
+        """
+        rows =  len(self.__chat_messages)
+        return rows
+
+    def data(self, index: QModelIndex, role: int = ...) -> Any:
+        if not index.isValid() or index.row() >= len(self.__chat_messages) or role != Qt.DisplayRole:
+            return QVariant()
+
+        row_data =  self.__chat_messages[index.row()].msg.message
+        return row_data
+
+    def add_message(self, context: MessageContext):
         """
         Adds the given mag to the list of conversation messages
+        :param context: Message Context containing message and sender
         :param sender: Determines if the owner of this conversation sent the mag or not
-        :param message: Message to be added, could be of any type derived from Message
         """
 
-        if isinstance(message, GreetingMessage):
-            if not message.wants_to_talk:
-                self._state = ConversationState.CLOSED
-            else:
-                # Only two variables remain, is_ack and sender
-                if (not sender and message.ack) or (sender and message.ack):
-                    self._state = ConversationState.ACTIVE
-                elif sender and not message.ack:
-                    self._state = ConversationState.AWAIT
+        message = context.msg
+
+        if isinstance(message, ChatMessage):
+            # UI should only be notified to update with chat messages
+            insertionIdx = len(self.__chat_messages)
+            self.beginInsertRows(QModelIndex(), insertionIdx, insertionIdx)
+            self.__chat_messages.append(context)
+            self.endInsertRows()
+        else:
+            # Handle all control messages
+            if isinstance(message, GreetingMessage):
+                if not message.wants_to_talk:
+                    self._state = ConversationState.CLOSED
                 else:
-                    self._state = ConversationState.INACTIVE
-        elif isinstance(message, FarewellMessage):
-            self._state = ConversationState.CLOSED
+                    # Only two variables remain, is_ack and sender
+                    if (not context.is_sender and message.ack) or (context.is_sender and message.ack):
+                        self._state = ConversationState.ACTIVE
+                    elif context.is_sender and not message.ack:
+                        self._state = ConversationState.AWAIT
+                    else:
+                        self._state = ConversationState.INACTIVE
+            elif isinstance(message, FarewellMessage):
+                self._state = ConversationState.CLOSED
 
-        self.__messages.append(message)
-
-    def get_state(self):
-        return self._state
+            self.__ctrl_messages.append(context)
 
     def expecting_types(self) -> Set[MessageType]:
         if self._state is ConversationState.INACTIVE:
@@ -66,20 +95,59 @@ class Conversation:
         elif self._state is ConversationState.CLOSED:
             return set()
 
-    def get_connected_addr(self) -> (str, int):
-        return self.__chatting_peer.address
+    def state(self):
+        return self._state
 
-    def get_peer_username(self) -> (str, int):
-        return self.__chatting_peer.username
+    def peer_username(self, username: Optional[str] = None) -> str:
+        return self.__chatting_peer.username(username)
 
-    def get_peer_color(self) -> (str, int):
-        return self.__chatting_peer.color
+    def peer_color(self, color: Optional[str]) -> str:
+        return self.__chatting_peer.color(color)
 
-    def set_connected_addr(self, addr: (str, int)):
-        self.__chatting_peer.set_address(addr)
+    def peer(self) -> Peer:
+        return self.__chatting_peer
 
-    def set_username(self, username: str):
-        self.__chatting_peer.set_username(username)
+    def chat_message_contexts(self) -> List[MessageContext]:
+        """
+        :return: the contexts contained in the tracked chat message list
+        """
+        return self.__chat_messages
 
-    def set_color(self, color: str):
-        self.__chatting_peer.set_color(color)
+    def connected_addr(self, addr: Optional[Tuple[str, int]] = None) -> (str, int):
+        return self.__chatting_peer.address(addr)
+
+
+# DEBUGGING
+
+__debug_conv = None
+
+
+def debug_conversation():
+    """
+    == DEBUGGING ==
+    :return: A singleton conversation for debugging purposes
+    """
+    global __debug_conv
+
+    if not __debug_conv:
+        debug_dan = Peer(('127.0.0.1', 61000), True, 'debug_dan', '#FAB')
+        test_tom = Peer(('127.0.0.1', 52607), False, 'test_tom', '#AA1')
+
+        __debug_conv = Conversation(None, ('127.0.0.1', 40500))
+        __debug_conv.add_message(MessageContext(GreetingMessage(4011, 'debug_dan', False), debug_dan))
+        __debug_conv.add_message(MessageContext(GreetingMessage(20301, 'test_tom', True), test_tom))
+        __debug_conv.add_message(MessageContext(ChatMessage("Hello from debug dan!"), debug_dan))
+        __debug_conv.add_message(MessageContext(ChatMessage("Hello from test tom!"), test_tom))
+        __debug_conv.add_message(MessageContext(ChatMessage("How are you, dan?"), test_tom))
+        __debug_conv.add_message(
+            MessageContext(ChatMessage("I am very well! I have been busy debugging many projects and going "
+                                       "on long rants to provide multi-line text testing. You?"),
+                           debug_dan))
+        __debug_conv.add_message(
+            MessageContext(ChatMessage("I have also been sending double texts by the way!"), debug_dan))
+        __debug_conv.add_message(MessageContext(ChatMessage("Fantastic!"), test_tom))
+        __debug_conv.add_message(MessageContext(ChatMessage("Quite. Alright goodbye!"), debug_dan))
+        __debug_conv.add_message(MessageContext(FarewellMessage(), debug_dan))
+        __debug_conv.add_message(MessageContext(FarewellMessage(), test_tom))
+
+    return __debug_conv
