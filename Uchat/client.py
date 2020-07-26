@@ -37,7 +37,7 @@ class Client(QObject):
 
         # Set up conversation, with whom this chat is with
         other_address: (str, int) = debug_other_addr if debug_other_addr else (other_host, LISTENING_PORT)
-        self.__conversation = Conversation(other_address)
+        self.__conversation = Conversation(self, Peer(other_address, False))
 
         self.__listening_socket = TcpSocket(LISTENING_PORT)  # Create ipv4 TCP socket
         self.__selector = selector  # Reference to selector that is driving I/O multiplexing

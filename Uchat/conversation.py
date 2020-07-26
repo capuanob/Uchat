@@ -26,14 +26,14 @@ class Conversation(QAbstractListModel):
     Responsible for tracking messages sent during current conversation, it's participants, and it's status
     """
 
-    def __init__(self, parent: Optional[QObject], peer_addr: (str, int)):
+    def __init__(self, parent: Optional[QObject], peer: Peer):
         super().__init__(parent)
 
         self._state: ConversationState = ConversationState.INACTIVE
         self.__ctrl_messages: List[MessageContext] = list()  # Tracks every non-chat message part of conversation
         self.__chat_messages: List[MessageContext] = list()  # Tracks every chat message part of conversation
 
-        self.__chatting_peer = Peer(peer_addr, False)
+        self.__chatting_peer = peer
 
     # Model overrides
     def rowCount(self, parent: QModelIndex = ...) -> int:
@@ -46,11 +46,17 @@ class Conversation(QAbstractListModel):
         return rows
 
     def data(self, index: QModelIndex, role: int = ...) -> Any:
-        if not index.isValid() or index.row() >= len(self.__chat_messages) or role != Qt.DisplayRole:
+        if not index.isValid() or index.row() >= len(self.__chat_messages):
             return QVariant()
 
-        row_data =  self.__chat_messages[index.row()].msg.message
-        return row_data
+        if role == Qt.DisplayRole:
+            # Message bubble view
+            return self.__chat_messages[index.row()].msg.message
+        elif role == Qt.DecorationRole:
+            # Profile photo view
+            return "HELLO"
+        else:
+            return QVariant()
 
     def add_message(self, context: MessageContext):
         """
@@ -133,7 +139,7 @@ def debug_conversation():
         debug_dan = Peer(('127.0.0.1', 61000), True, 'debug_dan', '#FAB')
         test_tom = Peer(('127.0.0.1', 52607), False, 'test_tom', '#AA1')
 
-        __debug_conv = Conversation(None, ('127.0.0.1', 40500))
+        __debug_conv = Conversation(None, test_tom)
         __debug_conv.add_message(MessageContext(GreetingMessage(4011, 'debug_dan', False), debug_dan))
         __debug_conv.add_message(MessageContext(GreetingMessage(20301, 'test_tom', True), test_tom))
         __debug_conv.add_message(MessageContext(ChatMessage("Hello from debug dan!"), debug_dan))

@@ -7,9 +7,9 @@ class Peer:
     communications to them
     """
 
-    def __init__(self, address: Tuple[str, int], is_self: bool, username: Optional[str] = '', color: Optional[str] = ''):
-        self.__username = username
-        self.__color = color
+    def __init__(self, address: Tuple[str, int], is_self: bool, username: Optional[str] = None, color: Optional[str] = None):
+        self.__username = username if username else ''
+        self.__color = color if color else ''
         self.__is_self = is_self
         self.__address = address
 
