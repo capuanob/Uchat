@@ -4,6 +4,7 @@ from PyQt5.QtCore import Qt, QRegExp
 from PyQt5.QtGui import QRegExpValidator
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout
 
+from Uchat.client import Client
 from Uchat.conversation import Conversation
 from Uchat.helper.logger import write_to_data_file, DataType, FileName
 from Uchat.model.account import Account
@@ -22,14 +23,15 @@ def validate_line_edit(widget: QLineEdit, validator) -> bool:
 
 
 class LandingWindow(QWidget):
-    def __init__(self, parent: Optional[QWidget], has_account: bool):
+    def __init__(self, parent: Optional[QWidget], has_account: bool, client: Client):
         super(QWidget, self).__init__(parent)
 
         self.__layout_manager = QVBoxLayout(self)
+        self.__client = client
         self.widgets_with_errors: Set[QWidget] = set()
 
         if has_account:
-            self.conversation_view = ConversationView(self)
+            self.conversation_view = ConversationView(self, self.__client.conversation())
             self.__layout_manager.addWidget(self.conversation_view)
         else:
             self.username_field: QLineEdit = QLineEdit()

@@ -1,14 +1,12 @@
+import selectors
 from datetime import datetime
+from sys import stdin
+from typing import Dict
 
-from PyQt5.QtCore import QObject
-
+from Uchat.MessageContext import MessageContext
 from Uchat.conversation import Conversation, ConversationState
 from Uchat.network.messages.message import GreetingMessage, ChatMessage, MessageType, FarewellMessage, Message
 from Uchat.network.tcp import TcpSocket
-from sys import stdin
-import selectors
-from typing import Dict
-
 from Uchat.peer import Peer
 
 LISTENING_PORT: int = 52789  # Socket for a Uchat client to listen for incoming connections on
@@ -19,7 +17,7 @@ Has the ability to send and receive messages to other clients
 """
 
 
-class Client(QObject):
+class Client:
     def __init__(self, selector, username: str, profile_hex_code: str, other_host: str = None,
                  debug_l_port: int = LISTENING_PORT, debug_other_addr: (str, int) = None):
         """
@@ -33,11 +31,12 @@ class Client(QObject):
 
         LISTENING_PORT = debug_l_port
 
-        self.info = Peer(('', LISTENING_PORT), username, profile_hex_code[1:])
+        other_address: (str, int) = debug_other_addr if debug_other_addr else (other_host, LISTENING_PORT)
+        self._info = Peer(('', LISTENING_PORT), True, username, profile_hex_code[1:])
+        self._peer = Peer(other_address, False)
 
         # Set up conversation, with whom this chat is with
-        other_address: (str, int) = debug_other_addr if debug_other_addr else (other_host, LISTENING_PORT)
-        self.__conversation = Conversation(self, Peer(other_address, False))
+        self.__conversation = Conversation(None, self)
 
         self.__listening_socket = TcpSocket(LISTENING_PORT)  # Create ipv4 TCP socket
         self.__selector = selector  # Reference to selector that is driving I/O multiplexing
@@ -56,7 +55,7 @@ class Client(QObject):
         new_sock = listening_sock.accept_conn()  # We must have had bound and listened to get here
         self.__selector.register(new_sock, selectors.EVENT_READ, data=None)  # Add to watched sockets
         self.__update_chat_pack(new_sock.get_remote_addr(), new_sock)
-        self.__conversation.set_connected_addr(new_sock.get_remote_addr())
+        self.__conversation.peer().address(new_sock.get_remote_addr())
         print('Accepting new connection \n L {} to R {}'.format(new_sock.get_local_addr(), new_sock.get_remote_addr()))
         self.handle_receipt(new_sock)
 
@@ -98,8 +97,8 @@ class Client(QObject):
 
     def handle_greeting_receipt(self, msg):
         # Save user's information locally
-        self.__conversation.set_username(msg.username)
-        self.__conversation.set_color(msg.get_hex_code())
+        self.__conversation.peer().username(msg.username)
+        self.__conversation.peer().color(msg.get_hex_code())
         # Poll user for accept / decline
 
         # Send response
@@ -109,10 +108,10 @@ class Client(QObject):
             self.send_greeting(True, True)
 
     def handle_chat_receipt(self, msg):
-        print('{}: {} says {}'.format(datetime.fromtimestamp(msg.time_stamp), self.__conversation.get_peer_username(),
+        print('{}: {} says {}'.format(datetime.fromtimestamp(msg.time_stamp), self.__conversation.peer().username(),
                                       msg.message), end='')
 
-    def handle_farewell_receipt(self, msg):
+    def handle_farewell_receipt(self):
         print('Receiving farewell')
         self.destroy()
 
@@ -123,7 +122,10 @@ class Client(QObject):
     def handle_receipt(self, comm_sock: TcpSocket):
         msg = comm_sock.recv_message()
         pre_expecting_types = self.__conversation.expecting_types()
-        self.__conversation.add_message(msg, False)
+
+        # Construct message context
+        context = MessageContext(msg, self._peer)
+        self.__conversation.add_message(context)
 
         if msg and msg.m_type in pre_expecting_types:
             if msg.m_type is MessageType.GREETING:
@@ -137,31 +139,28 @@ class Client(QObject):
         else:
             print('Handling unexpected mag type: {}'.format(msg.m_type))
 
-
     # Message sending
     def send_greeting(self, ack: bool, wants_to_talk: bool = True):
         """
         Used to send a greeting mag to the peer, as a means of starting the conversation
         """
-        greeting = GreetingMessage(int(self.profile_hex_code, 16), self.username, ack, wants_to_talk)
+        greeting = GreetingMessage(int(self._info.color(), 16), self._info.username(), ack, wants_to_talk)
         print('Sending greeting')
         self.send(greeting)
 
-    def send_chat(self):
+    def send_chat(self, chat_message: ChatMessage):
         """
         Gets a line of input from stdin and sends it to another client as a wrapped ChatMessage
         """
-        message = stdin.readline()
 
         if self.__conversation.state() is ConversationState.ACTIVE:
             # As we are in an active conversation, safe to create mag
-            chat_message = ChatMessage(message)
             print('Sending chat')
             self.send(chat_message)
         elif self.__conversation.state() is ConversationState.INACTIVE:
             self.send_greeting(False)
         else:
-            print('Will not send {} on an {} conversation.'.format(message, self.__conversation.state()))
+            print('Will not send {} on an {} conversation.'.format(chat_message.message, self.__conversation.state()))
             return
 
     def send_farewell(self):
@@ -177,9 +176,11 @@ class Client(QObject):
         Generic function, used to send bytes to the peer
         """
         message_bytes = message.to_bytes()
-        self.__conversation.add_message(message, True)
 
-        other_address = self.__conversation.get_connected_addr()
+        context = MessageContext(message, self.__conversation.personal())
+        self.__conversation.add_message(context)
+
+        other_address = self.__conversation.peer().address()
         if other_address not in self.__chat_pack:
             # Create a new TCP socket to communicate with other_address
             child_sock = TcpSocket()
@@ -188,3 +189,14 @@ class Client(QObject):
             self.__update_chat_pack(other_address, child_sock)
 
         self.__chat_pack[other_address].send_bytes(message_bytes)
+
+    # Getters & Setters
+
+    def info(self) -> Peer:
+        return self._info
+
+    def peer(self) -> Peer:
+        return self._peer
+
+    def conversation(self):
+        return self.__conversation

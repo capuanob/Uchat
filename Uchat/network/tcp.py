@@ -71,7 +71,7 @@ class TcpSocket:
         elif message_type is MessageType.CHAT:
             return ChatMessage.from_bytes(message_bytes)
         elif message_type is MessageType.FAREWELL:
-            return FarewellMessage.from_bytes(message_bytes)
+            return FarewellMessage.from_bytes()
         else:
             return None
 

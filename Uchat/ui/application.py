@@ -1,5 +1,7 @@
 from PyQt5.QtCore import QSize, QPoint
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
+
+from Uchat.client import Client
 from Uchat.helper.logger import get_user_account_data, DataType, FileName
 from Uchat.ui.landingWindow import LandingWindow
 
@@ -18,10 +20,11 @@ def get_center_pos(widget: QWidget) -> QPoint:
 
 
 class Application:
-    def __init__(self):
+    def __init__(self, client: Client):
         self.app_dimensions = QSize(500, 500)
         self.__app = QApplication(sys.argv)
         self.__main_win = QMainWindow(parent=None)
+        self.__client = client
 
         self.__generate_window()
 
@@ -41,6 +44,8 @@ class Application:
 
         # Load central widget
         account = get_user_account_data()
-        landing_window = LandingWindow(self.__main_win, account is not None)
+        landing_window = LandingWindow(self.__main_win, account is not None, self.__client)
         self.__main_win.setCentralWidget(landing_window)
+
+
         sys.exit(self.__app.exec_())

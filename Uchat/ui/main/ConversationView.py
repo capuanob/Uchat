@@ -1,7 +1,12 @@
 from typing import Optional
-from PyQt5.QtWidgets import QListView, QWidget, QVBoxLayout
-from Uchat import MessageContext
-from Uchat.conversation import Conversation, debug_conversation
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QKeyEvent
+from PyQt5.QtWidgets import QListView, QWidget, QVBoxLayout, QPlainTextEdit
+
+from Uchat.MessageContext import MessageContext
+from Uchat.conversation import Conversation
+from Uchat.network.messages.message import ChatMessage
 from Uchat.ui.main.MessageSendView import MessageSendView
 
 
@@ -13,13 +18,13 @@ class ConversationView(QWidget):
     messages to the recipient
     """
 
-    def __init__(self, parent: Optional[QWidget]):
+    def __init__(self, parent: Optional[QWidget], conversation: Conversation):
         super().__init__(parent)
 
         self._layout_manager = QVBoxLayout(self)
         self._message_list = QListView()  # View used to display conversation messages (the model)
-        self._conversation_model = debug_conversation()  # Model, contains messages that need to be displayed
-        self.send_view = MessageSendView(self, self._conversation_model.peer_username())
+        self._conversation_model = conversation  # Model, contains messages that need to be displayed
+        self._send_view = MessageSendView(self, self._conversation_model.peer().username())
 
         self.setup_ui()
 
@@ -35,15 +40,11 @@ class ConversationView(QWidget):
         self._message_list.setResizeMode(QListView.Adjust)  # Items laid out every time view is resized
 
         self._layout_manager.addWidget(self._message_list)
-        self._layout_manager.addWidget(self.send_view)
-    # Slots
+        self._layout_manager.addWidget(self._send_view)
 
-    def send_message(self, context: MessageContext):
-        """
-        Used to send a new message in the conversation
-        :param context: Context of new chat message to be sent
-        """
-        pass
+        # Connect to signals
+        self._send_view.text_edit().keyPressEvent = self.send_view_did_change
+        self._message_list.verticalScrollBar().rangeChanged.connect(self.scroll_to_message)
 
     # Signals
 
@@ -53,10 +54,42 @@ class ConversationView(QWidget):
         """
         pass
 
+    def send_view_did_change(self, e: QKeyEvent):
+        """
+        As QPlainTextEdit doesn't natively support enter key response, this function prevents the user from typing the
+        'enter' key and sends a message on its press instead
+        :param e: QKeyEvent raised by key press
+        """
+
+        text_field = self._send_view.text_edit()
+
+        if e.key() == Qt.Key_Return:
+            message: str = text_field.toPlainText()
+
+            if not message:  # Don't want to allow sending of empty messages
+                return
+
+            # Clear message send view
+            self._send_view.text_edit().clear()
+
+            # Create message
+            chat_msg = ChatMessage(message)
+
+            # Send over network to peer
+            self._conversation_model.send(chat_msg)
+        else:
+            QPlainTextEdit.keyPressEvent(text_field, e)
+
+    def scroll_to_message(self):
+        """
+        Event Listener connected to QListView's vertical scroll bar's range change
+
+        Scrolls to a new message when view reflects a new message in the model
+        """
+
+        self._message_list.scrollToBottom()
 
 """ TODO
-1) Hook up send_view to old send listener (get from ui github)
-2) Set up signals and slots for responsive addition
 3) Test between two users
 4) Stylize
 """

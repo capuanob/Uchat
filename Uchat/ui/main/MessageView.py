@@ -29,7 +29,7 @@ class MessageView(QWidget):
         self.__chat_bubble.setToolTip("Sent {}".format(readable_date))
 
         # Profile view
-        self.__sender_profile_view = ProfilePhotoView(parent, context.sender.username, context.sender.color, radius=20)
+        self.__sender_profile_view = ProfilePhotoView(parent, context.sender.username(), context.sender.color(), radius=20)
         self.__layout_manager = QHBoxLayout(parent)
 
         # Layout in proper order

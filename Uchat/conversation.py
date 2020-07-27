@@ -1,8 +1,10 @@
 from enum import Enum
 from typing import List, Set, Tuple
 
+from Uchat.ui.delegate import profilePhotoPixmap
 from typing import Optional, Any
 from PyQt5.QtCore import QObject, QAbstractListModel, QModelIndex, QVariant, Qt
+from PyQt5.QtWidgets import QLabel
 
 from Uchat.MessageContext import MessageContext
 from Uchat.network.messages.message import FarewellMessage, GreetingMessage, MessageType, ChatMessage
@@ -26,14 +28,18 @@ class Conversation(QAbstractListModel):
     Responsible for tracking messages sent during current conversation, it's participants, and it's status
     """
 
-    def __init__(self, parent: Optional[QObject], peer: Peer):
+    def __init__(self, parent: Optional[QObject], client):
+        """
+        :param parent: Parent of object
+        :param client: Client that created this conversation
+        """
         super().__init__(parent)
 
         self._state: ConversationState = ConversationState.INACTIVE
         self.__ctrl_messages: List[MessageContext] = list()  # Tracks every non-chat message part of conversation
         self.__chat_messages: List[MessageContext] = list()  # Tracks every chat message part of conversation
 
-        self.__chatting_peer = peer
+        self.__parent_client = client
 
     # Model overrides
     def rowCount(self, parent: QModelIndex = ...) -> int:
@@ -42,7 +48,7 @@ class Conversation(QAbstractListModel):
         :param parent:
         :return:
         """
-        rows =  len(self.__chat_messages)
+        rows = len(self.__chat_messages)
         return rows
 
     def data(self, index: QModelIndex, role: int = ...) -> Any:
@@ -54,7 +60,9 @@ class Conversation(QAbstractListModel):
             return self.__chat_messages[index.row()].msg.message
         elif role == Qt.DecorationRole:
             # Profile photo view
-            return "HELLO"
+            username = self.__parent_client.info().username()
+            color = self.__parent_client.info().color()
+            return profilePhotoPixmap.build_pixmap(color, username)
         else:
             return QVariant()
 
@@ -62,15 +70,14 @@ class Conversation(QAbstractListModel):
         """
         Adds the given mag to the list of conversation messages
         :param context: Message Context containing message and sender
-        :param sender: Determines if the owner of this conversation sent the mag or not
         """
 
         message = context.msg
 
         if isinstance(message, ChatMessage):
             # UI should only be notified to update with chat messages
-            insertionIdx = len(self.__chat_messages)
-            self.beginInsertRows(QModelIndex(), insertionIdx, insertionIdx)
+            insertion_idx = len(self.__chat_messages)
+            self.beginInsertRows(QModelIndex(), insertion_idx, insertion_idx)
             self.__chat_messages.append(context)
             self.endInsertRows()
         else:
@@ -104,14 +111,14 @@ class Conversation(QAbstractListModel):
     def state(self):
         return self._state
 
-    def peer_username(self, username: Optional[str] = None) -> str:
-        return self.__chatting_peer.username(username)
-
-    def peer_color(self, color: Optional[str]) -> str:
-        return self.__chatting_peer.color(color)
+    def send(self, message: ChatMessage):
+        self.__parent_client.send_chat(message)
 
     def peer(self) -> Peer:
-        return self.__chatting_peer
+        return self.__parent_client.peer()
+
+    def personal(self) -> Peer:
+        return self.__parent_client.info()
 
     def chat_message_contexts(self) -> List[MessageContext]:
         """
@@ -121,39 +128,3 @@ class Conversation(QAbstractListModel):
 
     def connected_addr(self, addr: Optional[Tuple[str, int]] = None) -> (str, int):
         return self.__chatting_peer.address(addr)
-
-
-# DEBUGGING
-
-__debug_conv = None
-
-
-def debug_conversation():
-    """
-    == DEBUGGING ==
-    :return: A singleton conversation for debugging purposes
-    """
-    global __debug_conv
-
-    if not __debug_conv:
-        debug_dan = Peer(('127.0.0.1', 61000), True, 'debug_dan', '#FAB')
-        test_tom = Peer(('127.0.0.1', 52607), False, 'test_tom', '#AA1')
-
-        __debug_conv = Conversation(None, test_tom)
-        __debug_conv.add_message(MessageContext(GreetingMessage(4011, 'debug_dan', False), debug_dan))
-        __debug_conv.add_message(MessageContext(GreetingMessage(20301, 'test_tom', True), test_tom))
-        __debug_conv.add_message(MessageContext(ChatMessage("Hello from debug dan!"), debug_dan))
-        __debug_conv.add_message(MessageContext(ChatMessage("Hello from test tom!"), test_tom))
-        __debug_conv.add_message(MessageContext(ChatMessage("How are you, dan?"), test_tom))
-        __debug_conv.add_message(
-            MessageContext(ChatMessage("I am very well! I have been busy debugging many projects and going "
-                                       "on long rants to provide multi-line text testing. You?"),
-                           debug_dan))
-        __debug_conv.add_message(
-            MessageContext(ChatMessage("I have also been sending double texts by the way!"), debug_dan))
-        __debug_conv.add_message(MessageContext(ChatMessage("Fantastic!"), test_tom))
-        __debug_conv.add_message(MessageContext(ChatMessage("Quite. Alright goodbye!"), debug_dan))
-        __debug_conv.add_message(MessageContext(FarewellMessage(), debug_dan))
-        __debug_conv.add_message(MessageContext(FarewellMessage(), test_tom))
-
-    return __debug_conv
