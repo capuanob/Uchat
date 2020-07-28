@@ -55,13 +55,16 @@ class Conversation(QAbstractListModel):
         if not index.isValid() or index.row() >= len(self.__chat_messages):
             return QVariant()
 
+        context = self.__chat_messages[index.row()]
+
         if role == Qt.DisplayRole:
             # Message bubble view
-            return self.__chat_messages[index.row()].msg.message
+            return context.msg.message
         elif role == Qt.DecorationRole:
             # Profile photo view
-            username = self.__parent_client.info().username()
-            color = self.__parent_client.info().color()
+            sender = self.__parent_client.info() if context.is_sender else self.__parent_client.peer()
+            username = sender.username()
+            color = sender.color()
             return profilePhotoPixmap.build_pixmap(color, username)
         else:
             return QVariant()

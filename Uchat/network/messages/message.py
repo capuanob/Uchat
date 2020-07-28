@@ -87,7 +87,7 @@ class FarewellMessage(Message, ABC):
         super().__init__(MessageType.FAREWELL)
 
     def to_bytes(self) -> bytes:
-        return _pack(FarewellMessage._farewell_format, self.m_type)
+        return _pack(FarewellMessage._farewell_format, self.m_type.value)
 
     @classmethod
     def from_bytes(cls):
@@ -95,7 +95,7 @@ class FarewellMessage(Message, ABC):
 
 
 def _pack(format_str: str, *packed_args) -> bytes:
-    # Convert greeting mag to bytearray
+    # Convert greeting msg to bytearray
     message_bytes: bytes = Struct(format_str).pack(*packed_args)
     # Insert 4 bytes of length at beginning
     return Struct('I').pack(struct.calcsize(format_str)) + message_bytes

@@ -1,10 +1,9 @@
 from __future__ import annotations
 import socket
+import struct
+from typing import Optional, Tuple
 
-# TODO: ADD EXCEPTION HANDLING TO THESE FUNCTIONS
-from struct import Struct
-from typing import Optional
-
+from Uchat.helper.error import print_err
 from Uchat.network.messages.message import GreetingMessage, MessageType, Message, ChatMessage, FarewellMessage
 
 
@@ -30,10 +29,14 @@ class TcpSocket:
         """
         Binds the socket to its address and listens for incoming messages
         """
-        self.__sock.bind(self.__address)
-        self.__sock.setblocking(False)
-        self.__sock.listen()
-        print('Client listening on: {}'.format(self.__address))
+        try:
+            self.__sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.__sock.bind(self.__address)
+            self.__sock.setblocking(False)
+            self.__sock.listen()
+            print('Client listening on: {}'.format(self.__address))
+        except OSError as os_err:
+            print_err(2, "Error raised on attempt to establish listening socket\n" + str(os_err))
 
     def connect(self, conn_addr):
         """
@@ -41,43 +44,51 @@ class TcpSocket:
 
         :param conn_addr: Address of host to connect to
         """
-        self.__sock.connect(conn_addr)
-        print('New connection: \n L {} -> R {}'.format(self.get_local_addr(), self.get_remote_addr()))
+        try:
+            self.__sock.connect(conn_addr)
+            print('New connection: \n L {} -> R {}'.format(self.get_local_addr(), self.get_remote_addr()))
+        except InterruptedError as int_err:
+            print_err(2, "Connection time-out. Failure to connect to host: {}\n".format(self.get_remote_addr()) +
+                      str(int_err))
+        except OSError as os_err:
+            print_err(2, "Failure to connect to host: {}\n".format(self.get_remote_addr()) + str(os_err))
 
     def send_bytes(self, message: bytes):
         """
 
         :param message: Send provided bytes via an already connected socket
         """
-        self.__sock.sendall(message)
-
-    def recv_greeting(self, greeting: bytes) -> GreetingMessage:
-        """
-
-        :return Receives all bytes from the socket's buffer and returns their representative string
-        """
-        greeting_message = GreetingMessage.from_bytes(greeting)
-
-        return greeting_message
+        try:
+            self.__sock.sendall(message)
+        except OSError as os_err:
+            print_err(2, "Failure to send {}... to peer\n".format(message[:10]) + str(os_err))
 
     def recv_message(self) -> Optional[Message]:
-        message_len = Struct('I').unpack(self.__sock.recv(4))[0]
-        message_bytes = self.__sock.recv(message_len)
-        message_type = MessageType(Struct('B').unpack(message_bytes[:1])[0])
+        try:
+            message_len = struct.Struct('I').unpack(self.__sock.recv(4))[0]
+            message_bytes = self.__sock.recv(message_len)
+            message_type = MessageType(struct.Struct('B').unpack(message_bytes[:1])[0])
 
-        # Parse bytes to rebuild mag
-        if message_type is MessageType.GREETING:
-            return GreetingMessage.from_bytes(message_bytes)
-        elif message_type is MessageType.CHAT:
-            return ChatMessage.from_bytes(message_bytes)
-        elif message_type is MessageType.FAREWELL:
-            return FarewellMessage.from_bytes()
-        else:
+            # Parse bytes to rebuild mag
+            if message_type is MessageType.GREETING:
+                return GreetingMessage.from_bytes(message_bytes)
+            elif message_type is MessageType.CHAT:
+                return ChatMessage.from_bytes(message_bytes)
+            elif message_type is MessageType.FAREWELL:
+                return FarewellMessage.from_bytes()
+            else:
+                return None
+        except struct.error as struct_err:
+            print_err(3, "Unable to decode bytes on listening socket.\n" + str(struct_err))
+        except OSError as os_err:
+            print_err(2, "Unable to receive bytes on listening socket.\n" + str(os_err))
+
+    def accept_conn(self) -> Optional[TcpSocket]:
+        try:
+            new_sock, addr = self.__sock.accept()
+            return TcpSocket(port=addr[1], sock=new_sock)
+        except OSError:
             return None
-
-    def accept_conn(self) -> TcpSocket:
-        new_sock, addr = self.__sock.accept()
-        return TcpSocket(port=addr[1], sock=new_sock)
 
     def fileno(self) -> int:
         """
@@ -89,25 +100,33 @@ class TcpSocket:
 
     # Getters and Setters
 
-    def get_local_addr(self):
+    def get_local_addr(self) -> Optional[Tuple[str, int]]:
         """
         :return: the socket name, associated with the socket's local address
         """
-        return self.__sock.getsockname()
+        try:
+            return self.__sock.getsockname()
+        except OSError as os_err:
+            print_err(2, "Unable to get socket name\n" + str(os_err))
+            return None
 
-    def get_remote_addr(self):
+    def get_remote_addr(self) -> Optional[Tuple[str, int]]:
         """
 
         :return: the socket's peer name, associated with the socket's remote address
         """
         try:
             return self.__sock.getpeername()
-        except socket.error as e:
+        except OSError as os_err:
+            print_err(2, "Unable to get peer name\n" + str(os_err))
             return None
 
     def free(self):
         """
         Used to unbind a TCP socket and free its port
         """
-        self.__sock.shutdown(socket.SHUT_RDWR)  # Send FIN to peer
-        self.__sock.close()  # Decrement the handle count by 1
+        try:
+            self.__sock.shutdown(socket.SHUT_RDWR)  # Send FIN to peer
+            self.__sock.close()  # Decrement the handle count by 1
+        except OSError as os_err:
+            print_err(2, "Unable to free socket.\n" + str(os_err))

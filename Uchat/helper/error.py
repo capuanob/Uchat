@@ -4,6 +4,9 @@ from typing import Dict
 
 error_codes: Dict[int, str] = {
     1: 'FILE I/O error',
+    2: 'Network error',
+    3: 'Decoding error',
+    4: 'Logic error',
     99: 'Unknown error occurred'
 }
 
@@ -18,7 +21,7 @@ def print_err(error_code: int, additional_info: str = ''):
     if error_code not in error_codes:
         error_code = 99  # Unknown error code
 
-    print('{} : {}'.format(error_code, error_codes[error_code]), file=stderr)
+    print('\n{} (Error {})'.format(error_codes[error_code], error_code), file=stderr)
     if additional_info:
-        print("Additional information\n\n{}".format(additional_info))
+        print("Additional information: {}\n".format(additional_info), file=stderr)
 

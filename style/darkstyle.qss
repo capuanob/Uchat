@@ -73,14 +73,13 @@ QScrollBar::add-line, QScrollBar::sub-line {
       background: none;
 }
 
-QScrollArea::corner {
-    border: none;
-}
-
-
 /* MESSAGE VIEW */
 
-QWidget#message-view > QLabel#chat-bubble {
+QListView {
+    background-color: transparent;
+}
+
+QListView::item {
     font-size: 20px;
     color: white;
     border-radius: 10px;

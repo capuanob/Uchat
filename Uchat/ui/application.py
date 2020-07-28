@@ -1,4 +1,5 @@
 from PyQt5.QtCore import QSize, QPoint
+from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
 
 from Uchat.client import Client
@@ -24,6 +25,7 @@ class Application:
         self.app_dimensions = QSize(500, 500)
         self.__app = QApplication(sys.argv)
         self.__main_win = QMainWindow(parent=None)
+        self.__main_win.closeEvent = self.__handle_program_exit
         self.__client = client
 
         self.__generate_window()
@@ -47,5 +49,11 @@ class Application:
         landing_window = LandingWindow(self.__main_win, account is not None, self.__client)
         self.__main_win.setCentralWidget(landing_window)
 
-
         sys.exit(self.__app.exec_())
+
+    def __handle_program_exit(self, e: QCloseEvent):
+        """
+        Free socket and send farewell to partner
+        """
+        self.__client.destroy(True)
+        QMainWindow.closeEvent(self.__main_win, e)

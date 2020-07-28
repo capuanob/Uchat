@@ -1,6 +1,6 @@
 from typing import Optional
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtWidgets import QListView, QWidget, QVBoxLayout, QPlainTextEdit
 
@@ -36,23 +36,24 @@ class ConversationView(QWidget):
         self._message_list.setModel(self._conversation_model)  # Connect model
         self._message_list.setLayoutMode(QListView.Batched)  # Display as needed
         self._message_list.setBatchSize(10)  # Number of messages to display
-        self._message_list.setFlow(QListView.TopToBottom)  # Display vertically
+        self._message_list.setFlow(QListView.TopToBottom)  # Display verticallyh
         self._message_list.setResizeMode(QListView.Adjust)  # Items laid out every time view is resized
 
-        self._layout_manager.addWidget(self._message_list)
-        self._layout_manager.addWidget(self._send_view)
+        # Set custom size hint, based off viewport size hint
+        # vp_size_hint_func = (lambda: QSize(self._message_list.sizeHintForColumn(0),
+        #                                    self._message_list.sizeHintForRow(0) * self._conversation_model.rowCount()))
+        # self._message_list.sizeHint = vp_size_hint_func
 
         # Connect to signals
         self._send_view.text_edit().keyPressEvent = self.send_view_did_change
         self._message_list.verticalScrollBar().rangeChanged.connect(self.scroll_to_message)
 
-    # Signals
+        # Layout widgets and views
+        self._layout_manager.addStretch(1)
+        self._layout_manager.addWidget(self._message_list)
+        self._layout_manager.addWidget(self._send_view)
 
-    def message_received(self):
-        """
-        Updates UI to reflect an incoming message that needs to be displayed
-        """
-        pass
+    # Listeners
 
     def send_view_did_change(self, e: QKeyEvent):
         """
@@ -88,6 +89,7 @@ class ConversationView(QWidget):
         """
 
         self._message_list.scrollToBottom()
+
 
 """ TODO
 3) Test between two users

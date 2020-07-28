@@ -5,6 +5,7 @@ from typing import Dict
 
 from Uchat.MessageContext import MessageContext
 from Uchat.conversation import Conversation, ConversationState
+from Uchat.helper.error import print_err
 from Uchat.network.messages.message import GreetingMessage, ChatMessage, MessageType, FarewellMessage, Message
 from Uchat.network.tcp import TcpSocket
 from Uchat.peer import Peer
@@ -53,11 +54,15 @@ class Client:
         """
 
         new_sock = listening_sock.accept_conn()  # We must have had bound and listened to get here
-        self.__selector.register(new_sock, selectors.EVENT_READ, data=None)  # Add to watched sockets
-        self.__update_chat_pack(new_sock.get_remote_addr(), new_sock)
-        self.__conversation.peer().address(new_sock.get_remote_addr())
-        print('Accepting new connection \n L {} to R {}'.format(new_sock.get_local_addr(), new_sock.get_remote_addr()))
-        self.handle_receipt(new_sock)
+
+        if new_sock:
+            self.__selector.register(new_sock, selectors.EVENT_READ, data=None)  # Add to watched sockets
+            self.__update_chat_pack(new_sock.get_remote_addr(), new_sock)
+            self.__conversation.peer().address(new_sock.get_remote_addr())
+            print('Accepting new connection \n L {} to R {}'.format(new_sock.get_local_addr(), new_sock.get_remote_addr()))
+            self.handle_receipt(new_sock)
+        else:
+            print_err(2, "Unable to accept incoming connection\n")
 
     def handle_connection(self, updated_sock: TcpSocket):
         """
@@ -84,11 +89,14 @@ class Client:
             self.__chat_pack[address].free()
         self.__chat_pack[address] = socket
 
-    def destroy(self):
+    def destroy(self, send_farewell: bool):
         """
-
+        send_farewell: If the user is receiving a farewell, no need to send one back
         :return:
         """
+
+        if send_farewell:
+            self.send_farewell()
         self.__listening_socket.free()
         for addr, sock in self.__chat_pack.items():
             sock.free()
@@ -107,13 +115,13 @@ class Client:
         if not msg.ack:
             self.send_greeting(True, True)
 
-    def handle_chat_receipt(self, msg):
-        print('{}: {} says {}'.format(datetime.fromtimestamp(msg.time_stamp), self.__conversation.peer().username(),
-                                      msg.message), end='')
-
     def handle_farewell_receipt(self):
         print('Receiving farewell')
-        self.destroy()
+        self.destroy(False)
+
+    def handle_chat_receipt(self, msg):
+        # Eventually log this message and its sender information
+        pass
 
     def handle_greeting_response_receipt(self, msg):
         status = '' if msg.acceptsConversation else 'not'
@@ -130,14 +138,14 @@ class Client:
         if msg and msg.m_type in pre_expecting_types:
             if msg.m_type is MessageType.GREETING:
                 self.handle_greeting_receipt(msg)
+            elif msg.m_type is MessageType.FAREWELL:
+                self.handle_farewell_receipt()
             elif msg.m_type is MessageType.CHAT:
                 self.handle_chat_receipt(msg)
-            elif msg.m_type is MessageType.FAREWELL:
-                self.handle_farewell_receipt(msg)
             else:
-                print('Handling unknown mag type: {}'.format(msg.m_type))
+                print_err(3, "Handling unknown msg type: {}".format(msg.m_type))
         else:
-            print('Handling unexpected mag type: {}'.format(msg.m_type))
+            print_err(3, "Excepted message, received None")
 
     # Message sending
     def send_greeting(self, ack: bool, wants_to_talk: bool = True):
@@ -160,16 +168,14 @@ class Client:
         elif self.__conversation.state() is ConversationState.INACTIVE:
             self.send_greeting(False)
         else:
-            print('Will not send {} on an {} conversation.'.format(chat_message.message, self.__conversation.state()))
-            return
+            print_err(4, "Will not send {}... on {}.".format(chat_message.message[:10], self.__conversation.state()))
 
     def send_farewell(self):
         if self.__conversation.state() is ConversationState.ACTIVE:
             farewell_msg = FarewellMessage()
             self.send(farewell_msg)
-            self.destroy()
         else:
-            print('Will not send farewell on {} conversation state'.format(self.__conversation.state()))
+            print_err(4, "Will not send farewell on {}".format(self.__conversation.state()))
 
     def send(self, message: Message):
         """

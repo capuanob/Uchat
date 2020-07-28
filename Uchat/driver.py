@@ -19,7 +19,7 @@ def poll_selector(client: Client):
                 else:  # Must be an updated socket
                     client.handle_connection(key.fileobj)
         except socket.error as e:
-            client.destroy()
+            client.destroy(True)
 
 def run():
 
@@ -27,7 +27,11 @@ def run():
     if len(sys.argv) > 1 and sys.argv[1] == 'DEBUG':
         # Set up for debugging mode
         other_host = ('127.0.0.1', int(sys.argv[4]))
-        client = Client(sel, 'nokillz', '#FAB', debug_other_addr=other_host, debug_l_port=int(sys.argv[3]))
+
+        if int(sys.argv[3]) == 2500:
+            client = Client(sel, 'debug_dan', '#FAB', debug_other_addr=other_host, debug_l_port=int(sys.argv[3]))
+        else:
+            client = Client(sel, 'test_tom', '#B24CDA', debug_other_addr=other_host, debug_l_port=int(sys.argv[3]))
     else:
         other_host = input("Enter peer's IPv4: ")
         client = Client(sel, 'nokillz', '#FAB', other_host=other_host)
