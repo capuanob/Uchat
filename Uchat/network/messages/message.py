@@ -1,3 +1,6 @@
+"""
+Establishes the types of messages supported by Uchat and their encoding / decoding over the net
+"""
 from datetime import datetime
 from enum import Enum
 from struct import Struct
@@ -6,12 +9,18 @@ from abc import abstractmethod, ABC
 
 
 class MessageType(Enum):
+    """
+    Enumerates types of messages that can be sent (control messages included)
+    """
     GREETING = 0
     CHAT = 1
     FAREWELL = 2
 
 
 class Message:
+    """
+    Abstract class, generic message
+    """
     def __init__(self, m_type: MessageType):
         self.m_type: MessageType = m_type  # Type of mag
 
@@ -23,12 +32,12 @@ class Message:
 
         :returns The bytes representation of self
         """
-        pass
 
 
 class GreetingMessage(Message, ABC):
     """
-    Message used to establish communications with a peer, doubly-serving as a friend request and an introduction
+    Message used to establish communications with a peer,
+    doubly-serving as a friend request and an introduction
     """
     _greeting_format = 'B I ? ? 20p'
 
@@ -38,14 +47,17 @@ class GreetingMessage(Message, ABC):
         self.__color: int = color_as_int  # Must be encoded and decoded into 3 bytes
         self.username: str = username  # Must be between 3 - 20 characters
         self.ack: bool = ack  # True if this is acknowledging an original greeting
-        self.wants_to_talk: bool = wants_to_talk  # True if the sender wants to establish communications
+        self.wants_to_talk: bool = wants_to_talk  # True if the sender wants to comm
 
     def get_hex_code(self):
+        """
+        :return: hex string of color
+        """
         return hex(self.__color)
 
     def to_bytes(self) -> bytes:
-        return _pack(self._greeting_format, self.m_type.value, self.__color, self.ack, self.wants_to_talk,
-                     self.username.encode())
+        return _pack(self._greeting_format, self.m_type.value, self.__color, self.ack,
+                     self.wants_to_talk, self.username.encode())
 
     @classmethod
     def from_bytes(cls, obj_bytes: bytes):
@@ -71,16 +83,25 @@ class ChatMessage(Message, ABC):
 
     def to_bytes(self) -> bytes:
         chat_format = 'B H f {}s'.format(self.message_len)
-        return _pack(chat_format, self.m_type.value, self.message_len, self.time_stamp, self.message.encode())
+        return _pack(chat_format, self.m_type.value, self.message_len,
+                     self.time_stamp, self.message.encode())
 
     @classmethod
     def from_bytes(cls, obj_bytes: bytes):
+        """
+
+        :param obj_bytes: ChatMessage's bytes (received over network)
+        :return: a ChatMessage object built using obj_bytes
+        """
         message_len = Struct('H').unpack(obj_bytes[2:4])[0]
         param_tuple = Struct('B H f {}s'.format(message_len)).unpack(obj_bytes)
         return cls(param_tuple[3].decode('ascii'), param_tuple[2])
 
 
 class FarewellMessage(Message, ABC):
+    """
+    Used to close a conversation and its respective sockets
+    """
     _farewell_format = 'B'
 
     def __init__(self):
@@ -91,6 +112,10 @@ class FarewellMessage(Message, ABC):
 
     @classmethod
     def from_bytes(cls):
+        """
+        As its an empty object (just holds m_type), return an instance of it without arguments
+        :return:
+        """
         return cls()
 
 

@@ -1,10 +1,10 @@
 from enum import Enum
 from typing import List, Set, Tuple
 
+from Uchat.network.tcp import TcpSocket
 from Uchat.ui.delegate import profilePhotoPixmap
 from typing import Optional, Any
 from PyQt5.QtCore import QObject, QAbstractListModel, QModelIndex, QVariant, Qt
-from PyQt5.QtWidgets import QLabel
 
 from Uchat.MessageContext import MessageContext
 from Uchat.network.messages.message import FarewellMessage, GreetingMessage, MessageType, ChatMessage
@@ -28,10 +28,10 @@ class Conversation(QAbstractListModel):
     Responsible for tracking messages sent during current conversation, it's participants, and it's status
     """
 
-    def __init__(self, parent: Optional[QObject], client):
+    def __init__(self, parent: Optional[QObject], personal: Peer, peer: Peer, sock: Optional[TcpSocket]):
         """
-        :param parent: Parent of object
-        :param client: Client that created this conversation
+        :param parent: Parent of object\
+        :param sock: TCPSocket used for full-duplex communication in this conversation
         """
         super().__init__(parent)
 
@@ -39,7 +39,10 @@ class Conversation(QAbstractListModel):
         self.__ctrl_messages: List[MessageContext] = list()  # Tracks every non-chat message part of conversation
         self.__chat_messages: List[MessageContext] = list()  # Tracks every chat message part of conversation
 
-        self.__parent_client = client
+        # TCP Socket used for communicating in this conversation, full-duplex
+        self.__comm_sock: Optional[TcpSocket] = sock
+        self.__personal = personal
+        self.__peer = peer
 
     # Model overrides
     def rowCount(self, parent: QModelIndex = ...) -> int:
@@ -62,7 +65,7 @@ class Conversation(QAbstractListModel):
             return context.msg.message
         elif role == Qt.DecorationRole:
             # Profile photo view
-            sender = self.__parent_client.info() if context.is_sender else self.__parent_client.peer()
+            sender = self.__personal if context.is_sender else self.__peer
             username = sender.username()
             color = sender.color()
             return profilePhotoPixmap.build_pixmap(color, username)
@@ -108,20 +111,21 @@ class Conversation(QAbstractListModel):
             return {MessageType.GREETING}
         elif self._state is ConversationState.ACTIVE:
             return {MessageType.CHAT, MessageType.FAREWELL}
-        elif self._state is ConversationState.CLOSED:
+        else:
             return set()
 
     def state(self):
         return self._state
 
-    def send(self, message: ChatMessage):
-        self.__parent_client.send_chat(message)
+    def peer(self, new_peer: Optional[Peer] = None) -> Peer:
+        if new_peer:
+            self.__peer = new_peer
+        return self.__peer
 
-    def peer(self) -> Peer:
-        return self.__parent_client.peer()
-
-    def personal(self) -> Peer:
-        return self.__parent_client.info()
+    def personal(self, new_personal: Optional[Peer] = None) -> Peer:
+        if new_personal:
+            self.__personal = new_personal
+        return self.__personal
 
     def chat_message_contexts(self) -> List[MessageContext]:
         """
@@ -131,3 +135,15 @@ class Conversation(QAbstractListModel):
 
     def connected_addr(self, addr: Optional[Tuple[str, int]] = None) -> (str, int):
         return self.__chatting_peer.address(addr)
+
+    def sock(self, new_sock: Optional[TcpSocket] = None) -> Optional[TcpSocket]:
+        if new_sock:
+            self.__comm_sock = new_sock
+        return self.__comm_sock
+
+    def destroy(self):
+        """
+        Closes and destroys this conversation's socket
+        """
+        self._state = ConversationState.CLOSED
+        self.__comm_sock.free()

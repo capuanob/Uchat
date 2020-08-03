@@ -1,4 +1,6 @@
-from enum import Enum
+"""
+Error handling for application
+"""
 from sys import stderr
 from typing import Dict
 
@@ -24,4 +26,3 @@ def print_err(error_code: int, additional_info: str = ''):
     print('\n{} (Error {})'.format(error_codes[error_code], error_code), file=stderr)
     if additional_info:
         print("Additional information: {}\n".format(additional_info), file=stderr)
-

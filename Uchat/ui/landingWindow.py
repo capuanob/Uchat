@@ -5,10 +5,9 @@ from PyQt5.QtGui import QRegExpValidator
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout
 
 from Uchat.client import Client
-from Uchat.conversation import Conversation
 from Uchat.helper.logger import write_to_data_file, DataType, FileName
 from Uchat.model.account import Account
-from Uchat.ui.colorScheme import DarkModeColorScheme
+from Uchat.ui.friends.friendsListView import FriendsListView
 from Uchat.ui.main.ConversationView import ConversationView
 from Uchat.ui.main.ProfilePhotoView import ProfilePhotoView
 
@@ -26,13 +25,18 @@ class LandingWindow(QWidget):
     def __init__(self, parent: Optional[QWidget], has_account: bool, client: Client):
         super(QWidget, self).__init__(parent)
 
-        self.__layout_manager = QVBoxLayout(self)
+        self.__layout_manager = QHBoxLayout(self)
+        self.__friends_list = FriendsListView(self)
+
+        self.__conversation_layout_manager = QVBoxLayout()
         self.__client = client
         self.widgets_with_errors: Set[QWidget] = set()
 
+        self.__layout_manager.addWidget(self.__friends_list)
+
         if has_account:
-            self.conversation_view = ConversationView(self, self.__client.conversation())
-            self.__layout_manager.addWidget(self.conversation_view)
+            self.conversation_view = ConversationView(self, 0, client)
+            self.__conversation_layout_manager.addWidget(self.conversation_view)
         else:
             self.username_field: QLineEdit = QLineEdit()
             self.color_field: QLineEdit = QLineEdit()
@@ -40,6 +44,8 @@ class LandingWindow(QWidget):
             self.profile_photo_preview = ProfilePhotoView(self)
 
             self.__build_account_creation_screen()
+
+        self.__layout_manager.addLayout(self.__conversation_layout_manager)
 
     def __build_account_creation_screen(self):
         """
@@ -92,8 +98,8 @@ class LandingWindow(QWidget):
         top_widget_manager.addSpacing(30)
 
         # Layout landing window
-        self.__layout_manager.addWidget(top_widget, alignment=Qt.AlignCenter)
-        self.__layout_manager.addStretch()
+        self.__conversation_layout_manager.addWidget(top_widget, alignment=Qt.AlignCenter)
+        self.__conversation_layout_manager.addStretch()
 
     # Event Handlers
     def profile_photo_did_change(self):
@@ -131,4 +137,4 @@ class LandingWindow(QWidget):
     # Data saving
     def save_user_data(self):
         user_data = Account(self.username_field.text(), self.color_field.text())
-        write_to_data_file(DataType.USER, FileName.GLOBAL, user_data)
+        write_to_data_file(DataType.USER, FileName.GLOBAL, user_data, False)

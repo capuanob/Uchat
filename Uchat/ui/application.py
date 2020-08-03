@@ -21,6 +21,9 @@ def get_center_pos(widget: QWidget) -> QPoint:
 
 
 class Application:
+    """
+    Represents entire Uchat application
+    """
     def __init__(self, client: Client):
         self.app_dimensions = QSize(500, 500)
         self.__app = QApplication(sys.argv)
@@ -36,8 +39,8 @@ class Application:
         :return: Application's exit code
         """
 
-        with open('style/darkstyle.qss', 'r') as f:
-            self.__app.setStyleSheet(f.read())
+        with open('style/darkstyle.qss', 'r') as file:
+            self.__app.setStyleSheet(file.read())
 
         self.__main_win.setWindowTitle('UChat - Secure P2P Messaging')
         self.__main_win.setGeometry(0, 0, self.app_dimensions.height(), self.app_dimensions.width())
@@ -51,9 +54,9 @@ class Application:
 
         sys.exit(self.__app.exec_())
 
-    def __handle_program_exit(self, e: QCloseEvent):
+    def __handle_program_exit(self, event: QCloseEvent):
         """
         Free socket and send farewell to partner
         """
-        self.__client.destroy(True)
-        QMainWindow.closeEvent(self.__main_win, e)
+        self.__client.destroy()
+        QMainWindow.closeEvent(self.__main_win, event)

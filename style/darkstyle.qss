@@ -1,5 +1,5 @@
-QMainWindow {
-        background-color: #ff2a2c31;
+QMainWindow, QDialog {
+        background-color: #1d1e22;
 }
 
 QLabel {
@@ -36,8 +36,7 @@ QWidget#create-account-top {
 }
 
 QLineEdit, QPlainTextEdit {
-    background-color: #ff303338;
-    background-color: #ff303338;
+    background-color: #222327;
     color: #ffb6b8bb;
 }
 

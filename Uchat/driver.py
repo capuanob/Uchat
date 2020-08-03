@@ -4,36 +4,42 @@ import sys
 import threading
 
 from Uchat.client import Client
+from Uchat.peer import Peer
 from Uchat.ui.application import Application
 
 sel = selectors.DefaultSelector()
-
 
 def poll_selector(client: Client):
     while True:
         try:
             events = sel.select(timeout=None)
             for key, mask in events:
-                if key.fileobj is sys.stdin:
-                    client.send_chat()
-                else:  # Must be an updated socket
-                    client.handle_connection(key.fileobj)
+                client.handle_connection(key.fileobj)
         except socket.error as e:
-            client.destroy(True)
+            client.destroy()
+
 
 def run():
-
     # Handle debug vs normal operation set-up
     if len(sys.argv) > 1 and sys.argv[1] == 'DEBUG':
         # Set up for debugging mode
         other_host = ('127.0.0.1', int(sys.argv[4]))
 
         if int(sys.argv[3]) == 2500:
-            client = Client(sel, 'debug_dan', '#FAB', debug_other_addr=other_host, debug_l_port=int(sys.argv[3]))
+            info = Peer(('', int(sys.argv[3])), True, 'debug_dan', '#FAB')
+            peer = Peer(other_host, False)
+            peer.username(other_host[0])
+
+            client = Client(sel, info, peer)
         else:
-            client = Client(sel, 'test_tom', '#B24CDA', debug_other_addr=other_host, debug_l_port=int(sys.argv[3]))
+            info = Peer(('', int(sys.argv[3])), True, 'test_tom', '#BD2')
+            peer = Peer(other_host, False)
+            peer.username(other_host[0])
+            client = Client(sel, info, peer)
     else:
         other_host = input("Enter peer's IPv4: ")
+        info = Peer(('', int(sys.argv[3])), 'nokillz', '#FAB')
+        peer = Peer(other_host, False)
         client = Client(sel, 'nokillz', '#FAB', other_host=other_host)
 
     network_thread = threading.Thread(target=poll_selector, args=(client,))
@@ -41,6 +47,3 @@ def run():
     network_thread.start()
 
     Application(client)
-
-
-

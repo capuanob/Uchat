@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout
 from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QWidget, QLabel
 
 
 def validate_hex_code(hex_code: str) -> str:
@@ -11,11 +11,10 @@ def validate_hex_code(hex_code: str) -> str:
     hex_len = len(hex_code)
 
     if hex_code and hex_code[0] == '#':
-        if hex_len == 4 or hex_len == 7:
+        if hex_len in (4, 7):
             return hex_code
-        else:
-            return ''
-    elif hex_len == 3 or hex_len == 6:
+        return ''
+    elif hex_len in (3, 6):
         return '#' + hex_code
     else:
         return ''
@@ -43,6 +42,12 @@ class ProfilePhotoView(QLabel):
         self.update_label(username, hex_code)
 
     def update_label(self, username: str, hex_code: str):
+        """
+        Updates profile photo's color and displayed username
+        :param username: Username to extract first letter from
+        :param hex_code: Hex code string to use as profile background
+        """
+
         __hex_code = validate_hex_code(hex_code)
         self.setStyleSheet(self.styleSheet() +
                            """

@@ -1,3 +1,6 @@
+"""
+Sets forth abstractions on TCP communications
+"""
 from __future__ import annotations
 import socket
 import struct
@@ -38,20 +41,25 @@ class TcpSocket:
         except OSError as os_err:
             print_err(2, "Error raised on attempt to establish listening socket\n" + str(os_err))
 
-    def connect(self, conn_addr):
+    def connect(self, conn_addr) -> bool:
         """
         Connects the tcp socket to a remote address
 
         :param conn_addr: Address of host to connect to
+        :return: whether a connection could successfully be established
         """
         try:
             self.__sock.connect(conn_addr)
-            print('New connection: \n L {} -> R {}'.format(self.get_local_addr(), self.get_remote_addr()))
+            print('New connection: \n L {} -> R {}'.format(
+                self.get_local_addr(), self.get_remote_addr()))
+            return True
         except InterruptedError as int_err:
-            print_err(2, "Connection time-out. Failure to connect to host: {}\n".format(self.get_remote_addr()) +
-                      str(int_err))
+            print_err(2, "Connection time-out. Failure to connect to host: {}\n".format(
+                self.get_remote_addr()) + str(int_err))
+            return False
         except OSError as os_err:
             print_err(2, "Failure to connect to host: {}\n".format(self.get_remote_addr()) + str(os_err))
+            return False
 
     def send_bytes(self, message: bytes):
         """
@@ -64,8 +72,13 @@ class TcpSocket:
             print_err(2, "Failure to send {}... to peer\n".format(message[:10]) + str(os_err))
 
     def recv_message(self) -> Optional[Message]:
+        """
+        Decodes incoming bytes on the communication socket
+        :return: A Message application, if possible
+        """
         try:
-            message_len = struct.Struct('I').unpack(self.__sock.recv(4))[0]
+            incoming_bytes = self.__sock.recv(4)
+            message_len = struct.Struct('I').unpack(incoming_bytes)[0]
             message_bytes = self.__sock.recv(message_len)
             message_type = MessageType(struct.Struct('B').unpack(message_bytes[:1])[0])
 
@@ -80,10 +93,16 @@ class TcpSocket:
                 return None
         except struct.error as struct_err:
             print_err(3, "Unable to decode bytes on listening socket.\n" + str(struct_err))
+            return None
         except OSError as os_err:
             print_err(2, "Unable to receive bytes on listening socket.\n" + str(os_err))
+            return None
 
     def accept_conn(self) -> Optional[TcpSocket]:
+        """
+        Accepts a new connection
+        :return: If successful, the new TcpSocket is returned
+        """
         try:
             new_sock, addr = self.__sock.accept()
             return TcpSocket(port=addr[1], sock=new_sock)

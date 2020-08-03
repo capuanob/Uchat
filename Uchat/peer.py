@@ -8,10 +8,10 @@ class Peer:
     """
 
     def __init__(self, address: Tuple[str, int], is_self: bool, username: Optional[str] = None, color: Optional[str] = None):
-        self.__username = username if username else ''
-        self.__color = color if color else ''
-        self.__is_self = is_self
         self.__address = address
+        self.__is_self = is_self
+        self.__username = username if username else ''
+        self.__color = color.lstrip('#').lstrip('0x') if color else ''
 
     def username(self, new_username: Optional[str] = None):
         if new_username:
@@ -20,7 +20,7 @@ class Peer:
 
     def color(self, new_color: Optional[str] = None):
         if new_color:
-            self.__color = new_color
+            self.__color = new_color.lstrip('#').lstrip('0x')
         return self.__color
 
     def color_as_int(self):
@@ -28,9 +28,7 @@ class Peer:
         Converts the hexadecimal color code to its integer representation
         :return:
         """
-
-        hex_color = self.__color if self.__color[0] != '#' else self.__color[1:]  # Drop the hash
-        return int(hex_color, 16)
+        return int(self.__color, 16)
 
     def address(self, new_address: Optional[Tuple[str, int]] = None):
         if new_address:

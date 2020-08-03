@@ -4,6 +4,9 @@ from PyQt5.QtWidgets import QWidget, QPlainTextEdit, QVBoxLayout
 
 
 class MessageSendView(QWidget):
+    """
+    Custom widget for multi-line message entry
+    """
     def __init__(self, parent: QWidget, peer_username: Optional[str] = None):
         super().__init__(parent)
 
@@ -17,7 +20,6 @@ class MessageSendView(QWidget):
 
     def text_edit(self) -> QPlainTextEdit:
         """
-
         :return: The QPlainTextEdit of this widget
         """
         return self.__text_field
