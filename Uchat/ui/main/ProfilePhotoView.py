@@ -52,5 +52,5 @@ class ProfilePhotoView(QLabel):
         self.setStyleSheet(self.styleSheet() +
                            """
             background-color: {};
-            """.format(__hex_code if hex_code else '#6d0d7a'))
+            """.format(__hex_code))
         self.setText(username[0].upper() if username else 'U')

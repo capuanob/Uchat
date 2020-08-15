@@ -1,6 +1,6 @@
 from typing import Optional
 
-from PyQt5.QtWidgets import QWidget, QPlainTextEdit, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QPlainTextEdit, QVBoxLayout, QSizePolicy
 
 
 class MessageSendView(QWidget):
@@ -16,6 +16,7 @@ class MessageSendView(QWidget):
         self.__text_field = QPlainTextEdit(self)
         self.__text_field.setPlaceholderText("Message " + (peer_username if peer_username else "chat"))
         self.__text_field.setFixedHeight(100)
+        self.__text_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.layout_manager.addWidget(self.__text_field, 1)
 
     def text_edit(self) -> QPlainTextEdit:

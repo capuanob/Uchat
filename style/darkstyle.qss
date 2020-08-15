@@ -1,5 +1,6 @@
-QMainWindow, QDialog {
-        background-color: #1d1e22;
+QMainWindow, QDialog, QTabBar, QMenu {
+    background-color: #1d1e22;
+    color: white;
 }
 
 QLabel {
@@ -42,7 +43,6 @@ QLineEdit, QPlainTextEdit {
 
 QWidget#create-account-top > QLineEdit {
     background-color: #ff303338;
-    background-color: #ff303338;
     color: #ffb6b8bb;
 }
 
@@ -56,7 +56,14 @@ QPushButton#create-account-btn {
     padding: 10px;
 }
 
+
+QFrame#conversation-header {
+    background-color: #ff303338;
+    border-bottom: 1px solid black;
+}
+
 /* SCROLL BARS */
+
 QScrollBar, QScrollArea {
     background-color: transparent;
 }
@@ -76,11 +83,22 @@ QScrollBar::add-line, QScrollBar::sub-line {
 
 QListView {
     background-color: transparent;
+    margin-right: 5px;
 }
+
 
 QListView::item {
     font-size: 20px;
     color: white;
     border-radius: 10px;
     padding: 10px;
+}
+
+
+
+.friends_list {
+    background-color: #222327;
+    border-width: 2px 2px 2px 0;
+    border-style: solid;
+    border-color: #2a2b31;
 }

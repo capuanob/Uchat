@@ -4,7 +4,6 @@ Handles logging of pertinent data for session persistence
 from enum import Enum
 from typing import Dict, Any, List, Optional
 from pathlib import Path
-import json
 import pickle
 import os.path
 
@@ -19,6 +18,7 @@ class DataType(Enum):
     """
     LOG = 'logs'
     USER = 'user'
+    ICONS = 'icons'
 
 
 class FileName(Enum):
@@ -39,9 +39,26 @@ def write_to_data_file(data_type: DataType, file_name: FileName, obj: Any, appen
     """
 
     try:
-        file_path = _get_file_path(data_type, file_name)
+        file_path = get_file_path(data_type, file_name)
         with open(file_path, 'ab' if append_mode else 'wb') as file:
             pickle.dump(obj, file, pickle.HIGHEST_PROTOCOL)
+    except OSError as err:
+        print_err(1, repr(err))
+
+
+def write_list_to_data_file(data_type: DataType, file_name: FileName, obj_list: Any):
+    """
+    Saves a list of objects as json
+    :param data_type:
+    :param file_name: File to save to
+    :param obj_list: Object to be serialized as json
+    """
+    file_path = get_file_path(data_type, file_name)
+
+    try:
+        with open(file_path, 'wb') as file:
+            for obj in obj_list:
+                pickle.dump(obj, file, pickle.HIGHEST_PROTOCOL)
     except OSError as err:
         print_err(1, repr(err))
 
@@ -81,7 +98,7 @@ def _get_data_from_file(data_type: DataType, file_name: FileName) -> Dict:
     """
 
     obj = None
-    file_path = _get_file_path(data_type, file_name)
+    file_path = get_file_path(data_type, file_name)
 
     if os.path.isfile(file_path):
         with open(file_path, 'rb') as file:
@@ -98,7 +115,7 @@ def _get_data_list_from_file(data_type: DataType, file_name: FileName) -> List:
     :return: Deserialized JSON object(s)
     """
     objs = []
-    file_path = _get_file_path(data_type, file_name)
+    file_path = get_file_path(data_type, file_name)
 
     if os.path.isfile(file_path):
         with open(file_path, 'rb') as file:
@@ -110,7 +127,7 @@ def _get_data_list_from_file(data_type: DataType, file_name: FileName) -> List:
     return objs
 
 
-def _get_file_path(data_type: DataType, file_name: FileName):
+def get_file_path(data_type: DataType, file_name: Optional[FileName] = None, file_name_str: Optional[str] = None):
     """
     Forms a file path in the data folder
 
@@ -120,6 +137,6 @@ def _get_file_path(data_type: DataType, file_name: FileName):
     """
     file_path = Path('data')
     file_path /= data_type.value
-    file_path /= file_name.value
+    file_path /= file_name.value if file_name else file_name_str
 
     return file_path

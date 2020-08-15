@@ -44,7 +44,9 @@ class Application:
 
         self.__main_win.setWindowTitle('UChat - Secure P2P Messaging')
         self.__main_win.setGeometry(0, 0, self.app_dimensions.height(), self.app_dimensions.width())
-        self.__main_win.move(get_center_pos(self.__main_win))
+
+        if len(sys.argv) > 1 and sys.argv[1] != 'DEBUG':
+            self.__main_win.move(get_center_pos(self.__main_win))
         self.__main_win.show()
 
         # Load central widget

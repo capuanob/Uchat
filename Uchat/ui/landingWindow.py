@@ -1,13 +1,16 @@
 from typing import Optional, Set
 
-from PyQt5.QtCore import Qt, QRegExp
-from PyQt5.QtGui import QRegExpValidator
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout
+from PyQt5.QtCore import Qt, QRegExp, pyqtSignal
+from PyQt5.QtGui import QRegExpValidator, QIcon, QPixmap, QColor, QColorConstants
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QSplitter, QTabWidget, \
+    QStackedWidget, QListWidget, QFrame, QListWidgetItem, QListView
 
 from Uchat.client import Client
-from Uchat.helper.logger import write_to_data_file, DataType, FileName
+from Uchat.helper.colorScheme import load_themed_icon
+from Uchat.helper.logger import write_to_data_file, DataType, FileName, get_file_path
 from Uchat.model.account import Account
-from Uchat.ui.friends.friendsListView import FriendsListView
+from Uchat.peer import Peer
+from Uchat.ui.friends.friendsListView import FriendsListView, ConversationsListView
 from Uchat.ui.main.ConversationView import ConversationView
 from Uchat.ui.main.ProfilePhotoView import ProfilePhotoView
 
@@ -25,19 +28,20 @@ class LandingWindow(QWidget):
     def __init__(self, parent: Optional[QWidget], has_account: bool, client: Client):
         super(QWidget, self).__init__(parent)
 
-        self.__layout_manager = QHBoxLayout(self)
-        self.__friends_list = FriendsListView(self)
-
-        self.__conversation_layout_manager = QVBoxLayout()
+        self.__layout_manager = QVBoxLayout(self)
         self.__client = client
-        self.widgets_with_errors: Set[QWidget] = set()
-
-        self.__layout_manager.addWidget(self.__friends_list)
 
         if has_account:
-            self.conversation_view = ConversationView(self, 0, client)
-            self.__conversation_layout_manager.addWidget(self.conversation_view)
+            self.__friends_list = FriendsListView(self, client)
+            self.__convs_list = ConversationsListView(self, client)
+            self._placeholder_frame = QFrame()
+            self._conversation_view = None
+
+            self.splitter = QSplitter(Qt.Horizontal)
+
+            self.__build_main_view()
         else:
+            self.widgets_with_errors: Set[QWidget] = set()
             self.username_field: QLineEdit = QLineEdit()
             self.color_field: QLineEdit = QLineEdit()
             self.create_btn: QPushButton = QPushButton()
@@ -45,7 +49,47 @@ class LandingWindow(QWidget):
 
             self.__build_account_creation_screen()
 
-        self.__layout_manager.addLayout(self.__conversation_layout_manager)
+    def __build_main_view(self):
+        # Set up left-side of splitter
+
+        # Stack of left-side widgets
+        stack = QStackedWidget(self)
+
+        stack.addWidget(self.__friends_list)
+        stack.addWidget(self.__convs_list)
+
+        stack_labels = QListWidget(self)
+        stack_labels.setViewMode(QListView.IconMode)
+        stack_labels.setFixedWidth(50)
+        stack_labels.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        stack_labels.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        # Add friend icon
+
+        friend_fp = str(get_file_path(DataType.ICONS, file_name_str="user.svg"))
+        friend_icon = load_themed_icon(friend_fp, QColorConstants.White)
+        stack_labels.addItem(QListWidgetItem(friend_icon, None, stack_labels, 0))
+
+        # Add chat icon
+        chat_fp = str(get_file_path(DataType.ICONS, file_name_str="comment.svg"))
+        chat_icon = load_themed_icon(chat_fp, QColorConstants.White)
+        stack_labels.addItem(QListWidgetItem(chat_icon, None, stack_labels, 0))
+
+        stack_labels.currentRowChanged.connect(lambda i: stack.setCurrentIndex(i))
+
+        # Combine stack and labels in frame
+        left_frame = QFrame()
+        layout_manager = QHBoxLayout(left_frame)
+        layout_manager.addWidget(stack_labels)
+        layout_manager.addWidget(stack)
+
+        self.splitter.addWidget(left_frame)
+        self.splitter.addWidget(self._placeholder_frame)
+
+        self.__layout_manager.addWidget(self.splitter)
+
+        # Connect events
+        self.__client.start_chat_signal.connect(self.chat_started)
 
     def __build_account_creation_screen(self):
         """
@@ -98,8 +142,8 @@ class LandingWindow(QWidget):
         top_widget_manager.addSpacing(30)
 
         # Layout landing window
-        self.__conversation_layout_manager.addWidget(top_widget, alignment=Qt.AlignCenter)
-        self.__conversation_layout_manager.addStretch()
+        self.__layout_manager.addWidget(top_widget, alignment=Qt.AlignCenter)
+        self.__layout_manager.addStretch()
 
     # Event Handlers
     def profile_photo_did_change(self):
@@ -138,3 +182,15 @@ class LandingWindow(QWidget):
     def save_user_data(self):
         user_data = Account(self.username_field.text(), self.color_field.text())
         write_to_data_file(DataType.USER, FileName.GLOBAL, user_data, False)
+
+    def chat_started(self, peer: Peer):
+        """
+
+        :return:
+        """
+        self.__convs_list.model().add_peer(peer)
+        self._conversation_view = ConversationView(self, self.__client,
+                                                   peer, self.__friends_list.model(), self.__convs_list.model())
+        self.layout()
+        self.splitter.replaceWidget(1, self._conversation_view)
+

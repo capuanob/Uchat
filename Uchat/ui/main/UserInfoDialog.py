@@ -9,8 +9,7 @@ from PyQt5.QtWidgets import QWidget, QDialog, QLineEdit, QVBoxLayout, QFormLayou
 from Uchat.peer import Peer
 from Uchat.ui.main.ProfilePhotoView import ProfilePhotoView
 
-
-class UserInfoView(QDialog):
+class UserInfoDialog(QDialog):
     """
     This view is used to display information about a peer, whether it be a friend or the client
     """
@@ -33,6 +32,9 @@ class UserInfoView(QDialog):
         self._is_editable: bool = False
         self._text_fields = [self._username_field, self._ipv4_field, self._port_field]
 
+        # Connect events
+        self._edit_btn.clicked.connect(self._handle_save_edit)
+        self._conv_btn.clicked.connect(self._chat_pressed)
         self._setup_ui()
 
     def _setup_ui(self):
@@ -58,6 +60,7 @@ class UserInfoView(QDialog):
         btn_layout.addWidget(self._edit_btn)
 
         self._layout_manager.addLayout(hor_layout)
+        self._layout_manager.addStretch()
         self._layout_manager.addLayout(btn_layout)
 
     def _handle_save_edit(self):
@@ -69,4 +72,10 @@ class UserInfoView(QDialog):
             # Save and disable fields
 
             # Validate username (length rule), IPv4, and port
-            self._peer.username(self._username_field.us)
+            self._peer.username(self._username_field.text())
+
+    def _chat_pressed(self):
+        """
+        Finds an existing conversation with user, if it exists, otherwise creates a new conversation
+        """
+        self.accept()

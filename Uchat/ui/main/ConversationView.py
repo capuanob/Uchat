@@ -1,15 +1,19 @@
 from typing import Optional
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeyEvent
-from PyQt5.QtWidgets import QListView, QWidget, QVBoxLayout, QPlainTextEdit
+from PyQt5.QtWidgets import QListView, QWidget, QVBoxLayout, QPlainTextEdit, QFrame, QLabel, QSizePolicy, QHBoxLayout
 
 from Uchat.client import Client
+from Uchat.model.peerList import PeerList
 from Uchat.network.messages.message import ChatMessage
+from Uchat.peer import Peer
+from Uchat.ui.delegate.messageItemDelegate import MessageItemDelegate
 from Uchat.ui.main.MessageSendView import MessageSendView
+from Uchat.ui.main.ProfilePhotoView import ProfilePhotoView
 
 
-class ConversationView(QWidget):
+class ConversationView(QFrame):
     """
     View
 
@@ -17,17 +21,29 @@ class ConversationView(QWidget):
     messages to the recipient
     """
 
-    def __init__(self, parent: Optional[QWidget], conv_idx: int, client: Client):
-        super().__init__(parent)
+    def __init__(self, parent: Optional[QWidget], client: Client, peer: Peer,
+                 friends_list: PeerList, conversation_list: PeerList):
 
-        self._layout_manager = QVBoxLayout(self)
-        self._message_list = QListView()  # View used to display conversation messages (the model)
-        self._conversation_model = client.conversation(conv_idx)  # Model, contains messages that need to be displayed
-        self._idx = conv_idx  # Index of conversation, for use with client interaction
+        super().__init__(parent)
+        self.setObjectName("conversation_view")
+
+        self._peer = peer
         self._client = client
+        self._friends_list = friends_list
+        self._conversation_list = conversation_list
+        self._conversation_model = self._client.conversation(self._peer)  # Model containing messages
+        self._layout_manager = QVBoxLayout(self)
+
+        # Configure message list
+        self._message_list = QListView()  # View used to display conversation messages (the model)
+        self._message_list.setWordWrap(True)
+        self._message_list.setModel(self._conversation_model)
+
+        # Set up custom delegate
+        message_delegate = MessageItemDelegate(self._message_list)
+        self._message_list.setItemDelegate(message_delegate)
         self._send_view = MessageSendView(self,
                                           self._conversation_model.peer().username() if self._conversation_model else None)
-
         self.setup_ui()
 
     def setup_ui(self):
@@ -35,25 +51,26 @@ class ConversationView(QWidget):
         Builds UI for display
         """
 
+        self._layout_manager.setContentsMargins(0, 0, 0, 0)
+        self._send_view.setContentsMargins(0, 0, 0, 0)
+
         self._message_list.setModel(self._conversation_model)  # Connect model
         self._message_list.setLayoutMode(QListView.Batched)  # Display as needed
         self._message_list.setBatchSize(10)  # Number of messages to display
         self._message_list.setFlow(QListView.TopToBottom)  # Display vertically
         self._message_list.setResizeMode(QListView.Adjust)  # Items laid out every time view is resized
 
-        # Set custom size hint, based off viewport size hint
-        # vp_size_hint_func = (lambda: QSize(self._message_list.sizeHintForColumn(0),
-        # self._message_list.sizeHintForRow(0) * self._conversation_model.rowCount()))
-        # self._message_list.sizeHint = vp_size_hint_func
+        # TODO: Build header
+
+
+        # Layout widgets and views
+        # self._layout_manager.addWidget(header)
+        self._layout_manager.addWidget(self._message_list, 1)
+        self._layout_manager.addWidget(self._send_view)
 
         # Connect to signals
         self._send_view.text_edit().keyPressEvent = self.send_view_did_change
         self._message_list.verticalScrollBar().rangeChanged.connect(self.scroll_to_message)
-
-        # Layout widgets and views
-        self._layout_manager.addStretch(1)
-        self._layout_manager.addWidget(self._message_list)
-        self._layout_manager.addWidget(self._send_view)
 
     # Listeners
 
@@ -79,7 +96,7 @@ class ConversationView(QWidget):
             chat_msg = ChatMessage(message)
 
             # Send over network to peer
-            self._client.send_chat(self._idx, chat_msg)
+            self._client.send_chat(self._peer, chat_msg)
         else:
             QPlainTextEdit.keyPressEvent(text_field, event)
 

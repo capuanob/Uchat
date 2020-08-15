@@ -10,8 +10,8 @@ class Peer:
     def __init__(self, address: Tuple[str, int], is_self: bool, username: Optional[str] = None, color: Optional[str] = None):
         self.__address = address
         self.__is_self = is_self
-        self.__username = username if username else ''
-        self.__color = color.lstrip('#').lstrip('0x') if color else ''
+        self.__username = username if username else address[0]
+        self.__color = color.lstrip('#').lstrip('0x') if color else '6d0d7a'
 
     def username(self, new_username: Optional[str] = None):
         if new_username:
@@ -34,6 +34,9 @@ class Peer:
         if new_address:
             self.__address = new_address
         return self.__address
+
+    def ipv4(self):
+        return self.__address[0]
 
     def is_self(self):
         return self.__is_self

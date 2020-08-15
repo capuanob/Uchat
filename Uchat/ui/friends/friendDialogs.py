@@ -1,9 +1,10 @@
 """
-Sets up view for adding a new friend
+Defines pop-ups necessary to facilitate full-functionality for the friends list
 """
-from typing import Optional
 
-from PyQt5.QtWidgets import QDialog, QWidget, QFormLayout, QLineEdit, QPushButton
+from typing import Optional, Tuple
+
+from PyQt5.QtWidgets import QDialog, QWidget, QFormLayout, QLineEdit, QPushButton, QLabel, QVBoxLayout, QHBoxLayout
 
 from Uchat.helper.globals import LISTENING_PORT
 from Uchat.helper.validators import is_valid_ipv4, is_valid_port
@@ -18,6 +19,7 @@ class AddFriendDialog(QDialog):
     def __init__(self, parent: Optional[QWidget], search_bar_text: str):
         super().__init__(parent)
 
+        self.setWindowTitle(" ")
         self.setStyleSheet(self.styleSheet() +
                            "font-size: 15px;"
                            )
@@ -66,3 +68,48 @@ class AddFriendDialog(QDialog):
         """
 
         return Peer((self._ip_field.text(), int(self._port_field.text())), False, self._ip_field.text())
+
+
+class ConnectionRequestDialog(QDialog):
+    """
+    Polls a user on if they would like to accept an incoming conversation request
+    """
+
+    def __init__(self, parent: Optional[QWidget], remote_host: Tuple[str, int], username: Optional[str] = None):
+        super().__init__(parent)
+
+        self.setWindowTitle(" ")
+        self.setStyleSheet(self.styleSheet() +
+                           "font-size: 15px;"
+                           )
+
+        self._remote_host = remote_host
+        self._username = username
+        self._layout_manager = QVBoxLayout(self)
+        self._accept_btn = QPushButton("Accept")
+        self._reject_btn = QPushButton("Reject")
+
+        # Connect slots
+        self._accept_btn.clicked.connect(lambda: self.accept())
+        self._reject_btn.clicked.connect(lambda: self.reject())
+
+        self._setup_ui()
+
+    def _setup_ui(self):
+        """
+        Layout UI for display
+        """
+        ip, port = self._remote_host
+        port = str(port)
+
+        user_identifier = self._username if self._username else "{}:{}".format(ip, port)
+        info_label = QLabel("Connection request received from: {}".format(user_identifier), self)
+
+        self._layout_manager.addWidget(info_label)
+
+        btn_layout = QHBoxLayout()
+        btn_layout.addWidget(self._accept_btn)
+        btn_layout.addWidget(self._reject_btn)
+
+        self._layout_manager.addLayout(btn_layout)
+

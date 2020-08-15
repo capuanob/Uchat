@@ -4,6 +4,8 @@ import sys
 import threading
 
 from Uchat.client import Client
+from Uchat.helper.globals import LISTENING_PORT
+from Uchat.helper.logger import get_user_account_data
 from Uchat.peer import Peer
 from Uchat.ui.application import Application
 
@@ -27,20 +29,15 @@ def run():
 
         if int(sys.argv[3]) == 2500:
             info = Peer(('', int(sys.argv[3])), True, 'debug_dan', '#FAB')
-            peer = Peer(other_host, False)
-            peer.username(other_host[0])
 
-            client = Client(sel, info, peer)
+            client = Client(None, sel, info)
         else:
             info = Peer(('', int(sys.argv[3])), True, 'test_tom', '#BD2')
-            peer = Peer(other_host, False)
-            peer.username(other_host[0])
-            client = Client(sel, info, peer)
+            client = Client(None, sel, info)
     else:
-        other_host = input("Enter peer's IPv4: ")
-        info = Peer(('', int(sys.argv[3])), 'nokillz', '#FAB')
-        peer = Peer(other_host, False)
-        client = Client(sel, 'nokillz', '#FAB', other_host=other_host)
+        user_data = get_user_account_data()
+        info = Peer(('', LISTENING_PORT), True, user_data.username, user_data.hex_code)
+        client = Client(None, sel, info)
 
     network_thread = threading.Thread(target=poll_selector, args=(client,))
     network_thread.daemon = True

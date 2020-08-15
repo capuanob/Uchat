@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QPoint, Qt
+from PyQt5.QtCore import QPoint, Qt, QRectF
 from PyQt5.QtGui import QPixmap, QColor, QPainter, QBrush, QFont
 from PyQt5.QtWidgets import QApplication
 
@@ -7,6 +7,7 @@ def build_pixmap(color: str, username: str, radius: int = 35) -> QPixmap:
     """
     Generate a pixmap for displaying the profile photo bubble
 
+    :param radius: Radius of circle
     :param color: Hex code to fill the background with
     :param username: Username to draw the first letter from
     :return: a pixmap to be displayed
@@ -32,7 +33,9 @@ def build_pixmap(color: str, username: str, radius: int = 35) -> QPixmap:
 
     # Paint center_letter
     app_font = QApplication.font()
-    # painter.setFont(QFont(app_font.family(), 20, app_font.weight()))
-    painter.drawText(QPoint(radius / 2, radius / 2), center_letter)
+    app_font.setPixelSize(20)
+    painter.setFont(app_font)
+    painter.setPen(Qt.white)
+    painter.drawText(QRectF(0, 0, radius, radius), Qt.AlignCenter, center_letter)
 
     return pix

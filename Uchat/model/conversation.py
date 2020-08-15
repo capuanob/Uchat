@@ -100,7 +100,11 @@ class Conversation(QAbstractListModel):
                     else:
                         self._state = ConversationState.INACTIVE
             elif isinstance(message, FarewellMessage):
-                self._state = ConversationState.CLOSED
+                if self._state != ConversationState.ACTIVE:
+                    # Never started, so set to inactive
+                    self._state = ConversationState.INACTIVE
+                else:
+                    self._state = ConversationState.CLOSED
 
             self.__ctrl_messages.append(context)
 
@@ -146,4 +150,5 @@ class Conversation(QAbstractListModel):
         Closes and destroys this conversation's socket
         """
         self._state = ConversationState.CLOSED
-        self.__comm_sock.free()
+        if self.__comm_sock:
+            self.__comm_sock.free()
