@@ -198,7 +198,7 @@ class ConversationsListView(PeerListView):
         username = None
         if matching_friends := list(
                 filter(lambda friend: friend.ipv4() == remote_addr[0], self._peer_model.peers())):
-            username = matching_friends[0].username()
+            username = matching_friends[0].__username()
 
         # Show dialog about new connection request
         dialog = ConnectionRequestDialog(self, remote_addr, username)

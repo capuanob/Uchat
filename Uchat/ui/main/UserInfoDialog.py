@@ -27,13 +27,11 @@ class UserInfoDialog(QDialog):
         self._ipv4_field = QLineEdit(peer.address()[0])
         self._port_field = QLineEdit(str(peer.address()[1]))
         self._conv_btn = QPushButton("Chat")
-        self._edit_btn = QPushButton("Edit")
 
         self._is_editable: bool = False
         self._text_fields = [self._username_field, self._ipv4_field, self._port_field]
 
         # Connect events
-        self._edit_btn.clicked.connect(self._handle_save_edit)
         self._conv_btn.clicked.connect(self._chat_pressed)
         self._setup_ui()
 
@@ -57,22 +55,10 @@ class UserInfoDialog(QDialog):
 
         btn_layout = QHBoxLayout()
         btn_layout.addWidget(self._conv_btn)
-        btn_layout.addWidget(self._edit_btn)
 
         self._layout_manager.addLayout(hor_layout)
         self._layout_manager.addStretch()
         self._layout_manager.addLayout(btn_layout)
-
-    def _handle_save_edit(self):
-        """
-        Event that toggles between editing and saving
-        """
-
-        if self.is_editable:
-            # Save and disable fields
-
-            # Validate username (length rule), IPv4, and port
-            self._peer.username(self._username_field.text())
 
     def _chat_pressed(self):
         """

@@ -25,7 +25,7 @@ QLabel#create-account-welcome {
     font-weight: bold;
 }
 
-QLabel#sub-lbl {
+QLabel#sub-lbl, QCheckBox {
     color: #ffb6b8bb;
     font-size: 15px;
 }
@@ -60,6 +60,10 @@ QPushButton#create-account-btn {
 QFrame#conversation-header {
     background-color: #ff303338;
     border-bottom: 1px solid black;
+}
+
+QFrame#line {
+    background-color: #696969;
 }
 
 /* SCROLL BARS */

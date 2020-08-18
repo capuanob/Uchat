@@ -9,7 +9,6 @@ from typing import Optional, Tuple
 from Uchat.helper.error import print_err
 from Uchat.network.messages.message import GreetingMessage, MessageType, Message, ChatMessage, FarewellMessage
 
-
 class TcpSocket:
     """
     Abstraction upon python sockets
@@ -25,6 +24,7 @@ class TcpSocket:
 
         # Actual TCP socket being abstracted upon
         self.__sock = sock if sock else socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
         # Address of socket; '' means the socket should bind to any appropriate interface
         self.__address = ('', port if port else self.__sock.getsockname()[1])
 
@@ -149,3 +149,10 @@ class TcpSocket:
             self.__sock.close()  # Decrement the handle count by 1
         except OSError as os_err:
             print_err(2, "Unable to free socket.\n" + str(os_err))
+
+    def set_timeout(self, timeout_len: float):
+        """
+        Sets the socket to timeout mode
+        :param timeout_len: Length of timeout in secs
+        """
+        self.__sock.settimeout(timeout_len)

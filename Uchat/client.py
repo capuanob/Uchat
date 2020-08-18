@@ -139,7 +139,7 @@ class Client(QObject):
 
         if conv := self.conversation(peer):
             # Save user's information locally
-            conv.peer().username(msg.username)
+            conv.peer().username(msg.get_username())
             conv.peer().color(msg.get_hex_code())
 
         print('Receiving greeting')
@@ -242,6 +242,7 @@ class Client(QObject):
             if not conv.sock():
                 # Create a new TCP socket to communicate with other_address
                 child_sock = TcpSocket()
+                child_sock.set_timeout(5)  # Times out operations after 5 seconds
 
                 if child_sock.connect(other_address):  # Could a connection be established?
                     # Full-duplex socket, must listen for incoming messages and use for sending new ones

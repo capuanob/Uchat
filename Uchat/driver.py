@@ -11,6 +11,7 @@ from Uchat.ui.application import Application
 
 sel = selectors.DefaultSelector()
 
+
 def poll_selector(client: Client):
     while True:
         try:
@@ -36,7 +37,8 @@ def run():
             client = Client(None, sel, info)
     else:
         user_data = get_user_account_data()
-        info = Peer(('', LISTENING_PORT), True, user_data.username, user_data.hex_code)
+        info = Peer(('', LISTENING_PORT), True, user_data.username() if user_data else "",
+                    user_data.hex_code() if user_data else "")
         client = Client(None, sel, info)
 
     network_thread = threading.Thread(target=poll_selector, args=(client,))

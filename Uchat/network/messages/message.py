@@ -45,7 +45,7 @@ class GreetingMessage(Message, ABC):
         super().__init__(MessageType.GREETING)
 
         self.__color: int = color_as_int  # Must be encoded and decoded into 3 bytes
-        self.username: str = username  # Must be between 3 - 20 characters
+        self.__username: str = username  # Must be between 3 - 20 characters
         self.ack: bool = ack  # True if this is acknowledging an original greeting
         self.wants_to_talk: bool = wants_to_talk  # True if the sender wants to comm
 
@@ -55,9 +55,12 @@ class GreetingMessage(Message, ABC):
         """
         return hex(self.__color)
 
+    def get_username(self):
+        return self.__username
+
     def to_bytes(self) -> bytes:
         return _pack(self._greeting_format, self.m_type.value, self.__color, self.ack,
-                     self.wants_to_talk, self.username.encode())
+                     self.wants_to_talk, self.__username.encode())
 
     @classmethod
     def from_bytes(cls, obj_bytes: bytes):
