@@ -9,7 +9,7 @@ from Uchat.client import Client
 from Uchat.helper.colorScheme import load_themed_icon
 from Uchat.helper.logger import write_to_data_file, DataType, FileName, get_file_path
 from Uchat.model.account import Account
-from Uchat.network.upnp import ensure_port_is_forwarded
+# from Uchat.network.upnp import ensure_port_is_forwarded
 from Uchat.peer import Peer
 from Uchat.ui.accountCreation import AccountCreationPresenter
 from Uchat.ui.friends.friendsListView import FriendsListView, ConversationsListView
