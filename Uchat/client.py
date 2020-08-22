@@ -22,6 +22,7 @@ class Client(QObject):
     new_friend_added_signal = pyqtSignal(Peer)  # Emitted when a friend is added
     tcp_conn_received_signal = pyqtSignal(Peer, TcpSocket) # Emitted when a user needs to permit a new connection rqst
     start_chat_signal = pyqtSignal(Peer)
+    chat_received_signal = pyqtSignal(Peer)
 
     def __init__(self, parent: Optional[QObject], selector, info: Peer):
         """
@@ -126,7 +127,7 @@ class Client(QObject):
         send_farewell: If the user is receiving a farewell, no need to send one back
         :return:
         """
-
+        #TODO: Explore using a thread lock on self.__conversations (or make it atomic) to prevent dict size changing between deleting here and on farewell receipt
         for peer in self.__conversations.keys():
             self.send_farewell(peer)
 
@@ -169,9 +170,10 @@ class Client(QObject):
             # Deregister from socket
             self.delete_conversation(peer)
 
-    def handle_chat_receipt(self, msg):
+    def handle_chat_receipt(self, peer: Peer, msg):
         # Eventually log this message and its sender information
         print(msg.message, end='\n')
+        self.chat_received_signal.emit(peer)
 
     def handle_receipt(self, peer: Peer, comm_sock: TcpSocket):
         if conv := self.conversation(peer):
@@ -191,7 +193,7 @@ class Client(QObject):
                 elif msg.m_type is MessageType.FAREWELL:
                     self.handle_farewell_receipt(peer)
                 elif msg.m_type is MessageType.CHAT:
-                    self.handle_chat_receipt(msg)
+                    self.handle_chat_receipt(peer, msg)
                 else:
                     print_err(3, "Handling unknown msg type: {}".format(msg.m_type))
             else:

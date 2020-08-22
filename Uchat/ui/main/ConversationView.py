@@ -3,6 +3,7 @@ from typing import Optional
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QKeyEvent
 from PyQt5.QtWidgets import QListView, QWidget, QVBoxLayout, QPlainTextEdit, QFrame, QLabel, QSizePolicy, QHBoxLayout
+from PyQt5 import QtCore
 
 from Uchat.client import Client
 from Uchat.model.peerList import PeerList
@@ -60,9 +61,6 @@ class ConversationView(QFrame):
         self._message_list.setFlow(QListView.TopToBottom)  # Display vertically
         self._message_list.setResizeMode(QListView.Adjust)  # Items laid out every time view is resized
 
-        # TODO: Build header
-
-
         # Layout widgets and views
         # self._layout_manager.addWidget(header)
         self._layout_manager.addWidget(self._message_list, 1)
@@ -100,6 +98,14 @@ class ConversationView(QFrame):
         else:
             QPlainTextEdit.keyPressEvent(text_field, event)
 
+    def peer(self):
+        """
+        Getter
+        :return: this conversation's peer
+        """
+        return self._peer
+
+    @QtCore.pyqtSlot()
     def scroll_to_message(self):
         """
         Event Listener connected to QListView's vertical scroll bar's range change

@@ -1,12 +1,16 @@
-from PyQt5.QtCore import QSize, QPoint
+import sys
+from typing import Optional
+
+from PyQt5.QtCore import QSize, QPoint, QObject
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
 
 from Uchat.client import Client
-from Uchat.helper.logger import get_user_account_data, DataType, FileName
+from Uchat.helper.booter import execute_closure_methods
+from Uchat.helper.globals import WINDOW_TITLE
+from Uchat.helper.logger import get_user_account_data
+from Uchat.model.account import Account
 from Uchat.ui.landingWindow import LandingWindow
-
-import sys
 
 
 def get_center_pos(widget: QWidget) -> QPoint:
@@ -20,20 +24,29 @@ def get_center_pos(widget: QWidget) -> QPoint:
     return center_screen - widget.rect().center()
 
 
-class Application:
+class Application(QObject):
     """
     Represents entire Uchat application
     """
+
     def __init__(self, client: Client):
-        self.app_dimensions = QSize(500, 500)
+        super().__init__(None)
+
+        self.app_dimensions = QSize(700, 700)
         self.__app = QApplication(sys.argv)
         self.__main_win = QMainWindow(parent=None)
-        self.__main_win.closeEvent = self.__handle_program_exit
         self.__client = client
+        self.__account = get_user_account_data()
 
-        self.__generate_window()
+        # Connect signals
+        self.__main_win.closeEvent = self.__handle_program_exit
 
-    def __generate_window(self):
+        self.__generate_window(self.__account)
+
+    def __del__(self):
+        execute_closure_methods()
+
+    def __generate_window(self, account: Optional[Account]):
         """
         Generate's the application and it's primary window. UI main
         :return: Application's exit code
@@ -42,7 +55,7 @@ class Application:
         with open('style/darkstyle.qss', 'r') as file:
             self.__app.setStyleSheet(file.read())
 
-        self.__main_win.setWindowTitle('UChat - Secure P2P Messaging')
+        QApplication.setApplicationDisplayName(WINDOW_TITLE)
         self.__main_win.setGeometry(0, 0, self.app_dimensions.height(), self.app_dimensions.width())
 
         if len(sys.argv) > 1 and sys.argv[1] != 'DEBUG':
@@ -50,15 +63,28 @@ class Application:
         self.__main_win.show()
 
         # Load central widget
-        account = get_user_account_data()
-        landing_window = LandingWindow(self.__main_win, account is not None, self.__client)
+        landing_window = LandingWindow(self.__main_win, account, self.__client)
         self.__main_win.setCentralWidget(landing_window)
 
-        sys.exit(self.__app.exec_())
+        sys.exit(self.__app.exec())
+
+    def exec(self):
+        """
+        Exposes QApplication's exec functionality
+        :return: Program return code
+        """
+        return self.__app.exec()
+
+    def free(self):
+        del self.__main_win
 
     def __handle_program_exit(self, event: QCloseEvent):
         """
-        Free socket and send farewell to partner
+        Free socket and send farewell to partners
         """
+
         self.__client.destroy()
         QMainWindow.closeEvent(self.__main_win, event)
+
+    def execute_boot_thread(self):
+        self.__boot_thread.start()

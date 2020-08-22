@@ -5,6 +5,7 @@ Defines pop-ups necessary to facilitate full-functionality for the friends list
 from typing import Optional, Tuple
 
 from PyQt5.QtWidgets import QDialog, QWidget, QFormLayout, QLineEdit, QPushButton, QLabel, QVBoxLayout, QHBoxLayout
+from PyQt5 import QtCore
 
 from Uchat.helper.globals import LISTENING_PORT
 from Uchat.helper.validators import is_valid_ipv4, is_valid_port
@@ -51,6 +52,7 @@ class AddFriendDialog(QDialog):
         self._layout_manager.addRow("Friend's Port", self._port_field)
         self._layout_manager.addRow("", self._submit_btn)
 
+    @QtCore.pyqtSlot()
     def _submit_button_pressed(self):
         """
         Handles dialog's return value based off form validity

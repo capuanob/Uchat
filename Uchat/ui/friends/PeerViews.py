@@ -1,12 +1,13 @@
 """
 Defines the view for adding, removing, and interacting with friends
 """
-from typing import Optional, List
+from typing import Optional
 
+from PyQt5 import QtCore
 from PyQt5.QtCore import QSize, QModelIndex, Qt, QPoint
 from PyQt5.QtGui import QFontMetrics
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QListView, QHBoxLayout, QLineEdit, QPushButton, QDialog, \
-    QFrame, QMenu, QAbstractItemView, QAction
+    QFrame, QMenu, QAction
 
 from Uchat.client import Client
 from Uchat.helper.error import print_err
@@ -45,6 +46,7 @@ class PeerListView(QFrame):
 
         self._setup_ui()
 
+    @QtCore.pyqtSlot()
     def _search_initiated(self):
         """
         Slot connected to returnPressed signal, initiates a search
@@ -119,6 +121,7 @@ class FriendsListView(PeerListView):
         self.__add_btn.setMinimumSize(QSize(50, self._search_bar.height()))
         self.add_to_header(self.__add_btn)
 
+    @QtCore.pyqtSlot()
     def _add_friend(self):
         """
         Generates a dialog for getting information needed to add a new friend
@@ -127,9 +130,11 @@ class FriendsListView(PeerListView):
         if dialog.exec() == QDialog.Accepted:
             self._peer_model.add_peer(dialog.new_friend())
 
+    @QtCore.pyqtSlot(Peer)
     def handle_new_friend_added(self, new_friend: Peer):
         self._peer_model.add_peer(new_friend)
 
+    @QtCore.pyqtSlot(QModelIndex)
     def _item_double_clicked(self, index: QModelIndex):
         """
         Opens an editable info pane of the selected item
@@ -144,6 +149,7 @@ class FriendsListView(PeerListView):
                     self._client.create_conversation(friend, None)
                     self._client.send_greeting(friend, False)
 
+    @QtCore.pyqtSlot(QPoint)
     def show_context_menu(self, pos: QPoint):
         """
 
@@ -154,7 +160,7 @@ class FriendsListView(PeerListView):
         index = self._peer_list_view.indexAt(pos)
 
         if index.row() != -1:
-            globalPos = self._peer_list_view.mapToGlobal(pos)
+            global_pos = self._peer_list_view.mapToGlobal(pos)
 
             # Have to specify QAction parent explicitly due to anti-pattern where it isn't done auto
             # Prevents FriendsListView from being garbage collected, so no save
@@ -165,7 +171,7 @@ class FriendsListView(PeerListView):
             menu.addAction(del_action)
             # TODO: menu.addAction("Chat", self.)
 
-            menu.exec(globalPos)
+            menu.exec(global_pos)
             del menu
 
 
@@ -184,6 +190,7 @@ class ConversationsListView(PeerListView):
         self._peer_list_view.doubleClicked.connect(self.show_conversation)
         self._peer_list_view.customContextMenuRequested.connect(self.show_context_menu)
 
+    @QtCore.pyqtSlot(Peer, TcpSocket)
     def poll_user_on_new_conversation(self, peer: Peer, sock: TcpSocket):
         """
         Ask the user if they would like to engage in a conversation with the sock's IP
@@ -198,7 +205,7 @@ class ConversationsListView(PeerListView):
         username = None
         if matching_friends := list(
                 filter(lambda friend: friend.ipv4() == remote_addr[0], self._peer_model.peers())):
-            username = matching_friends[0].__username()
+            username = matching_friends[0].username()
 
         # Show dialog about new connection request
         dialog = ConnectionRequestDialog(self, remote_addr, username)
@@ -211,6 +218,7 @@ class ConversationsListView(PeerListView):
             # Otherwise, reject
             self._client.reject_connection(peer)
 
+    @QtCore.pyqtSlot(QModelIndex)
     def show_conversation(self, index: QModelIndex):
         """
         On double click, show the conversation of the associated peer
@@ -221,10 +229,11 @@ class ConversationsListView(PeerListView):
         friend = self._peer_model.at(index.row())
 
         if self._client.conversation(friend):
-            self._client.start_chat_signal.emit(friend)  # FIXME: Here
+            self._client.start_chat_signal.emit(friend)
         else:
             print_err(4, "No conversation exists!")
 
+    @QtCore.pyqtSlot(QPoint)
     def show_context_menu(self, pos: QPoint):
         """
         Shows a context menu for a right-click on the list view
@@ -233,12 +242,12 @@ class ConversationsListView(PeerListView):
 
         index = self._peer_list_view.indexAt(pos)
         if index.row() != -1:
-            globalPos = self._peer_list_view.mapToGlobal(pos)
+            global_pos = self._peer_list_view.mapToGlobal(pos)
 
             menu = QMenu(self)
             menu.addAction("Add", lambda: self.add_conversation_peer_to_friends(index))
             menu.addAction("Leave", lambda: self.__handle_leave_conversation(index))
-            menu.exec(globalPos)
+            menu.exec(global_pos)
 
     def add_conversation_peer_to_friends(self, index: QModelIndex):
         """

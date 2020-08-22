@@ -18,7 +18,7 @@ def poll_selector(client: Client):
             events = sel.select(timeout=None)
             for key, mask in events:
                 client.handle_connection(key.fileobj)
-        except socket.error as e:
+        except socket.error:
             client.destroy()
 
 
@@ -26,7 +26,6 @@ def run():
     # Handle debug vs normal operation set-up
     if len(sys.argv) > 1 and sys.argv[1] == 'DEBUG':
         # Set up for debugging mode
-        other_host = ('127.0.0.1', int(sys.argv[4]))
 
         if int(sys.argv[3]) == 2500:
             info = Peer(('', int(sys.argv[3])), True, 'debug_dan', '#FAB')

@@ -32,8 +32,8 @@ QLabel#sub-lbl, QCheckBox {
 
 QWidget#create-account-top {
     background-color: #ff36393f;
-    padding-bottom: 60px;
     border-radius: 5px;
+    padding-bottom: 10px;
 }
 
 QLineEdit, QPlainTextEdit {
@@ -105,4 +105,20 @@ QListView::item {
     border-width: 2px 2px 2px 0;
     border-style: solid;
     border-color: #2a2b31;
+}
+
+
+/* Error Messages */
+QErrorMessage {
+    color: white;
+}
+
+QErrorMessage > QPushButton {
+    width: 50px;
+    height: 35px;
+}
+
+QErrorMessage > QTextEdit {
+    color: white;
+    background-color: #222327;
 }

@@ -5,6 +5,7 @@ from typing import Optional
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QWidget, QDialog, QLineEdit, QVBoxLayout, QFormLayout, QHBoxLayout, QPushButton
+from PyQt5 import QtCore
 
 from Uchat.peer import Peer
 from Uchat.ui.main.ProfilePhotoView import ProfilePhotoView
@@ -60,6 +61,7 @@ class UserInfoDialog(QDialog):
         self._layout_manager.addStretch()
         self._layout_manager.addLayout(btn_layout)
 
+    @QtCore.pyqtSlot()
     def _chat_pressed(self):
         """
         Finds an existing conversation with user, if it exists, otherwise creates a new conversation

@@ -4,7 +4,8 @@ Designs and lays out all the windows necessary to successfully create an account
 from abc import abstractmethod
 from typing import Set
 
-from PyQt5.QtCore import QObject, Qt, QRegExp, QSize
+from PyQt5 import QtCore
+from PyQt5.QtCore import QObject, Qt, QRegExp, QSize, pyqtSignal
 from PyQt5.QtGui import QRegExpValidator
 from PyQt5.QtWidgets import QWidget, QStackedWidget, QPushButton, QVBoxLayout, QFrame, QLineEdit, QHBoxLayout, QLabel, \
     QCheckBox
@@ -20,17 +21,20 @@ class AccountCreationPresenter(QWidget):
     Handles data-validation, saving, and transitions between frames
     """
 
+    should_load_main_app = pyqtSignal(Account)  # Signal to reload LandingWindow
+
     def __init__(self, parent: QObject):
         super().__init__(parent)
 
         self.__layout_manager = QVBoxLayout(self)
-        self.__slide_stack = QStackedWidget(self)  # Stores the various frames for creating an account
+        self.__slide_stack = QStackedWidget()  # Stores the various frames for creating an account
         self.__proceed_btn = QPushButton("Get Started")  # Changes to say next or finish, slide-depending
 
         # Connect events
         self.__proceed_btn.clicked.connect(self.__proceed_btn_was_clicked)
         self.__setup_ui()
 
+    @QtCore.pyqtSlot()
     def __proceed_btn_was_clicked(self):
         curr_idx = self.__slide_stack.currentIndex()
 
@@ -46,19 +50,24 @@ class AccountCreationPresenter(QWidget):
             elif curr_idx == self.__slide_stack.count() - 1:
                 # Last slide
 
-                # Save data to global
+                # Save account data to global
                 account = Account()
                 for i in range(self.__slide_stack.count()):
                     self.__slide_stack.widget(i).fill_account_details(account)
                 write_to_data_file(DataType.USER, FileName.GLOBAL, account, False)
+
+                # Port-forward, if approved
+                self.hide()
+                self.should_load_main_app.emit(account)
+
             else:
                 self.__slide_stack.setCurrentIndex(curr_idx + 1)
 
     def __setup_ui(self):
 
         # Create frames and populate stack
-        self.__slide_stack.addWidget(AccountDetailsFrame(self))
-        self.__slide_stack.addWidget(NetworkDetailsFrame(self))
+        self.__slide_stack.addWidget(AccountDetailsFrame(self.__slide_stack))
+        self.__slide_stack.addWidget(NetworkDetailsFrame(self.__slide_stack))
         self.__slide_stack.hide()
 
         # Set up welcome top-half
@@ -68,14 +77,14 @@ class AccountCreationPresenter(QWidget):
         content_frame.setObjectName("create-account-top")
         content_layout = QVBoxLayout(content_frame)
 
-        # Create labels
+        # # Create labels
         welcome_lbl = QLabel('Welcome to UChat.')
         welcome_lbl.setObjectName('create-account-welcome')
         sub_lbl = QLabel('A secure and stateless, peer-to-peer messaging client')
         sub_lbl.setObjectName('sub-lbl')
-
-        # Create separation line
-        line = QFrame(self)
+        #
+        # # Create separation line
+        line = QFrame()
         line.setFixedHeight(1)
         line.setObjectName("line")
         line.setFrameShape(QFrame.HLine)
@@ -84,12 +93,13 @@ class AccountCreationPresenter(QWidget):
         # Configure proceed button
         self.__proceed_btn.setFixedSize(QSize(85, 35))
 
-        # Layout
+        # # Layout
         content_layout.addWidget(welcome_lbl)
         content_layout.addWidget(sub_lbl)
         content_layout.addSpacing(10)
         content_layout.addWidget(line)
         content_layout.addWidget(self.__slide_stack)
+
         self.__layout_manager.addWidget(content_frame)
         self.__layout_manager.addSpacing(35)
         self.__layout_manager.addWidget(self.__proceed_btn)
@@ -167,6 +177,7 @@ class AccountDetailsFrame(CreationSlide):
         account.hex_code(self.__color_field.text())
 
     # Event Handlers
+    @QtCore.pyqtSlot()
     def profile_photo_did_change(self):
         self.remove_error_outline(self.sender())
         self.__profile_photo_preview.update_label(self.__username_field.text(), self.__color_field.text())

@@ -1,38 +1,65 @@
 from typing import Optional
 
+from PyQt5 import QtCore
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QRegExpValidator, QColorConstants
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLineEdit, QHBoxLayout, QSplitter, QStackedWidget, QListWidget, \
-    QFrame, QListWidgetItem, QListView
+from PyQt5.QtGui import QColorConstants
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QStackedWidget, QListWidget, \
+    QFrame, QListWidgetItem, QListView, QErrorMessage
 
 from Uchat.client import Client
+from Uchat.helper.booter import BootThread
 from Uchat.helper.colorScheme import load_themed_icon
-from Uchat.helper.logger import write_to_data_file, DataType, FileName, get_file_path
+from Uchat.helper.logger import DataType, get_file_path
 from Uchat.model.account import Account
-from Uchat.network.upnp import ensure_port_is_forwarded
 from Uchat.peer import Peer
 from Uchat.ui.accountCreation import AccountCreationPresenter
-from Uchat.ui.friends.friendsListView import FriendsListView, ConversationsListView
+from Uchat.ui.friends.PeerViews import FriendsListView, ConversationsListView
 from Uchat.ui.main.ConversationView import ConversationView
 
+
 class LandingWindow(QWidget):
-    def __init__(self, parent: Optional[QWidget], has_account: bool, client: Client):
+    def __init__(self, parent: Optional[QWidget], account: Optional[Account], client: Client):
         super(QWidget, self).__init__(parent)
 
-        self.__layout_manager = QVBoxLayout(self)
         self.__client = client
+        self.__layout_manager = QVBoxLayout(self)
+        self._placeholder_frame = QFrame()
 
-        if has_account:
-            self.__friends_list = FriendsListView(self, client)
-            self.__convs_list = ConversationsListView(self, client)
-            self._placeholder_frame = QFrame()
-            self._conversation_view = None
+        # Introduce main view variables, as null optionals
+        self._conversation_view: Optional[ConversationView] = None
+        self.__friends_list: Optional[FriendsListView] = None
+        self.__convs_list: Optional[ConversationsListView] = None
+        self.__splitter: Optional[QSplitter] = None
+        self.__boot_thread: Optional[BootThread] = None
 
-            self.splitter = QSplitter(Qt.Horizontal)
+        if account:
+            self.load_main_view(account)
 
-            self.__build_main_view()
+            # Connect signals to slots
+            self.__client.chat_received_signal.connect(self.handle_chat_received)
         else:
-            self.__layout_manager.addWidget(AccountCreationPresenter(self))
+            self.account_creation = AccountCreationPresenter(self)
+            self.__layout_manager.addWidget(self.account_creation)
+
+            # Connect signals to slots
+            self.account_creation.should_load_main_app.connect(self.load_main_view)
+
+    def __del__(self):
+        # FIXME: Deletion isnt working due to QThread throwing an exception on early termination
+        pass
+
+    def load_main_view(self, account: Account):
+        self.__friends_list = FriendsListView(self, self.__client)
+        self.__convs_list = ConversationsListView(self, self.__client)
+        self._placeholder_frame = QFrame()
+
+        self.__splitter = QSplitter(Qt.Horizontal)
+
+        self.__boot_thread = BootThread(self, account)
+        self.__boot_thread.upnp_exception_raised.connect(self.handle_upnp_exception)
+        self.__boot_thread.start()
+
+        self.__build_main_view()
 
     def __build_main_view(self):
         # Set up left-side of splitter
@@ -40,12 +67,16 @@ class LandingWindow(QWidget):
         # Stack of left-side widgets
         stack = QStackedWidget(self)
 
+        conversation_list_widget = QFrame()
+        conv_layout = QHBoxLayout(conversation_list_widget)
+        conv_layout.addWidget(self.__convs_list)
+
         stack.addWidget(self.__friends_list)
         stack.addWidget(self.__convs_list)
 
         stack_labels = QListWidget(self)
         stack_labels.setViewMode(QListView.IconMode)
-        stack_labels.setFixedWidth(50)
+        stack_labels.setFixedWidth(55)
         stack_labels.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         stack_labels.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
@@ -68,22 +99,51 @@ class LandingWindow(QWidget):
         layout_manager.addWidget(stack_labels)
         layout_manager.addWidget(stack)
 
-        self.splitter.addWidget(left_frame)
-        self.splitter.addWidget(self._placeholder_frame)
+        self.__splitter.addWidget(left_frame)
+        self.__splitter.addWidget(self._placeholder_frame)
 
-        self.__layout_manager.addWidget(self.splitter)
+        self.__layout_manager.addWidget(self.__splitter)
 
         # Connect events
         self.__client.start_chat_signal.connect(self.chat_started)
 
+    # SLOTS
+
+    @QtCore.pyqtSlot(Peer)
     def chat_started(self, peer: Peer):
         """
 
         :return:
         """
+        peer.has_unread(False)
         self.__convs_list.model().add_peer(peer)
         self._conversation_view = ConversationView(self, self.__client,
                                                    peer, self.__friends_list.model(), self.__convs_list.model())
         self.layout()
-        self.splitter.replaceWidget(1, self._conversation_view)
+        self.__splitter.replaceWidget(1, self._conversation_view)
 
+    @QtCore.pyqtSlot(Peer)
+    def handle_chat_received(self, peer: Peer):
+        """
+        Slot connected to client's chat_received_signal
+        Used to alert the user of an incoming message when it is not for the current conversation
+        :return:
+        """
+        if not self._conversation_view:
+            return
+
+        if peer is not self._conversation_view.peer():
+            # The active conversation is different than the one receiving the message
+            peer.has_unread(True)
+
+    @QtCore.pyqtSlot(int, str)
+    def handle_upnp_exception(self, err_code: int, err_msg: str):
+        """
+        Slot connected to BootThread's upnp_exception_raised signal
+        Given a UPnP error, notifies the user through an error dialog.
+
+        :param err_code: Error code associated with error
+        :param err_msg: Error message raised
+        """
+        error_msg = QErrorMessage(self.__app)
+        error_msg.showMessage("Error {}: {}".format(err_code, err_msg))
