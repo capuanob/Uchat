@@ -6,6 +6,7 @@ import threading
 from Uchat.client import Client
 from Uchat.helper.globals import LISTENING_PORT
 from Uchat.helper.logger import get_user_account_data
+from Uchat.network.ip import get_external_ip
 from Uchat.peer import Peer
 from Uchat.ui.application import Application
 
@@ -44,4 +45,6 @@ def run():
     network_thread.daemon = True
     network_thread.start()
 
+    test = get_external_ip()
+    print(test)
     Application(client)
