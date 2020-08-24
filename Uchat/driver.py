@@ -45,6 +45,4 @@ def run():
     network_thread.daemon = True
     network_thread.start()
 
-    test = get_external_ip()
-    print(test)
     Application(client)

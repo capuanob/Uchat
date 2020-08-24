@@ -29,6 +29,10 @@ class UserInfoDialog(QDialog):
         self._port_field = QLineEdit(str(peer.address()[1]))
         self._conv_btn = QPushButton("Chat")
 
+        if peer.is_self():
+            # For "Account" menuBar option
+            self._conv_btn.hide()
+
         self._is_editable: bool = False
         self._text_fields = [self._username_field, self._ipv4_field, self._port_field]
 

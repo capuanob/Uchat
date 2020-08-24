@@ -4,6 +4,7 @@ Establishes module's model
 from typing import Optional, List, Any
 
 from PyQt5.QtCore import QAbstractListModel, QModelIndex, QVariant, Qt
+from PyQt5.QtGui import QBrush
 from PyQt5.QtWidgets import QWidget
 
 from Uchat.helper.logger import get_friends, DataType, FileName, write_list_to_data_file
@@ -55,11 +56,7 @@ class PeerList(QAbstractListModel):
         elif role == Qt.DecorationRole:
             return profilePhotoPixmap.build_pixmap(friend.color(), friend.username())
         elif role == Qt.ForegroundRole:
-            if self.is_stateless and friend.has_unread():
-                # Only applies to conversation view
-                return Qt.red
-            else:
-                return Qt.white
+            return QBrush(Qt.white)
         else:
             return QVariant()
 
@@ -101,3 +98,10 @@ class PeerList(QAbstractListModel):
         if 0 <= index < len(self._peers):
             return self._peers.pop(index)
         return None
+
+    def index_of(self, search_peer: Peer) -> Optional[int]:
+        for (index, peer) in enumerate(self._peers):
+            if peer is search_peer:
+                return index
+        else:
+            return None

@@ -1,6 +1,11 @@
-QMainWindow, QDialog, QTabBar, QMenu {
+QMainWindow, QDialog, QTabBar, QMenu, QMenuBar {
     background-color: #1d1e22;
     color: white;
+}
+
+QMenuBar {
+    background-color: #ff303338;
+    border-bottom: 1px solid #2a2b31;
 }
 
 QLabel {
@@ -93,7 +98,6 @@ QListView {
 
 QListView::item {
     font-size: 20px;
-    color: white;
     border-radius: 10px;
     padding: 10px;
 }

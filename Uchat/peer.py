@@ -13,7 +13,6 @@ class Peer:
         self.__is_self = is_self
         self.__username = username if username else address[0]
         self.__color = color.lstrip('#').lstrip('0x') if color else '6d0d7a'
-        self.__has_unread = False
 
     def username(self, new_username: Optional[str] = None):
         if new_username:
@@ -42,8 +41,3 @@ class Peer:
 
     def is_self(self):
         return self.__is_self
-
-    def has_unread(self, new_status: Optional[bool] = None):
-        if new_status:
-            self.__has_unread = new_status
-        return self.__has_unread

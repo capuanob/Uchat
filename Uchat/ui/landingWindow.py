@@ -1,8 +1,8 @@
 from typing import Optional
 
 from PyQt5 import QtCore
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColorConstants
+from PyQt5.QtCore import Qt, QModelIndex
+from PyQt5.QtGui import QColorConstants, QBrush
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QStackedWidget, QListWidget, \
     QFrame, QListWidgetItem, QListView, QErrorMessage
 
@@ -15,6 +15,7 @@ from Uchat.peer import Peer
 from Uchat.ui.accountCreation import AccountCreationPresenter
 from Uchat.ui.friends.PeerViews import FriendsListView, ConversationsListView
 from Uchat.ui.main.ConversationView import ConversationView
+from Uchat.ui.menuBar import MenuBar
 
 
 class LandingWindow(QWidget):
@@ -24,6 +25,7 @@ class LandingWindow(QWidget):
         self.__client = client
         self.__layout_manager = QVBoxLayout(self)
         self._placeholder_frame = QFrame()
+        self.__menu_bar = MenuBar(self)
 
         # Introduce main view variables, as null optionals
         self._conversation_view: Optional[ConversationView] = None
@@ -31,6 +33,7 @@ class LandingWindow(QWidget):
         self.__convs_list: Optional[ConversationsListView] = None
         self.__splitter: Optional[QSplitter] = None
         self.__boot_thread: Optional[BootThread] = None
+        self.__stack: Optional[QStackedWidget] = None
 
         if account:
             self.load_main_view(account)
@@ -61,18 +64,22 @@ class LandingWindow(QWidget):
 
         self.__build_main_view()
 
+        # Connect signals to slots
+        self.__menu_bar.at_index(1).show_friends_signal.connect(lambda: self.__stack.setCurrentIndex(0))
+        self.__menu_bar.at_index(1).show_conversations_signal.connect(lambda: self.__stack.setCurrentIndex(1))
+        self.__menu_bar.at_index(0).application_quit_signal.connect(lambda: self.parent().close())
     def __build_main_view(self):
         # Set up left-side of splitter
 
         # Stack of left-side widgets
-        stack = QStackedWidget(self)
+        self.__stack = QStackedWidget(self)
 
         conversation_list_widget = QFrame()
         conv_layout = QHBoxLayout(conversation_list_widget)
         conv_layout.addWidget(self.__convs_list)
 
-        stack.addWidget(self.__friends_list)
-        stack.addWidget(self.__convs_list)
+        self.__stack.addWidget(self.__friends_list)
+        self.__stack.addWidget(self.__convs_list)
 
         stack_labels = QListWidget(self)
         stack_labels.setViewMode(QListView.IconMode)
@@ -91,13 +98,13 @@ class LandingWindow(QWidget):
         chat_icon = load_themed_icon(chat_fp, QColorConstants.White)
         stack_labels.addItem(QListWidgetItem(chat_icon, None, stack_labels, 0))
 
-        stack_labels.currentRowChanged.connect(lambda i: stack.setCurrentIndex(i))
+        stack_labels.currentRowChanged.connect(lambda i: self.__stack.setCurrentIndex(i))
 
         # Combine stack and labels in frame
         left_frame = QFrame()
         layout_manager = QHBoxLayout(left_frame)
         layout_manager.addWidget(stack_labels)
-        layout_manager.addWidget(stack)
+        layout_manager.addWidget(self.__stack)
 
         self.__splitter.addWidget(left_frame)
         self.__splitter.addWidget(self._placeholder_frame)
@@ -107,6 +114,9 @@ class LandingWindow(QWidget):
         # Connect events
         self.__client.start_chat_signal.connect(self.chat_started)
 
+    def menu_bar(self):
+        return self.__menu_bar
+
     # SLOTS
 
     @QtCore.pyqtSlot(Peer)
@@ -115,7 +125,6 @@ class LandingWindow(QWidget):
 
         :return:
         """
-        peer.has_unread(False)
         self.__convs_list.model().add_peer(peer)
         self._conversation_view = ConversationView(self, self.__client,
                                                    peer, self.__friends_list.model(), self.__convs_list.model())
@@ -134,7 +143,10 @@ class LandingWindow(QWidget):
 
         if peer is not self._conversation_view.peer():
             # The active conversation is different than the one receiving the message
-            peer.has_unread(True)
+            index = self.__convs_list.model().index_of(peer)
+            if index is not None:
+                model_index = self.__convs_list.model().index(index, 0, QModelIndex())
+                self.__convs_list.model().setData(model_index, QBrush(Qt.red), Qt.ForegroundRole)
 
     @QtCore.pyqtSlot(int, str)
     def handle_upnp_exception(self, err_code: int, err_msg: str):

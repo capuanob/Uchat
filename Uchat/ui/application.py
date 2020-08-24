@@ -11,6 +11,7 @@ from Uchat.helper.globals import WINDOW_TITLE
 from Uchat.helper.logger import get_user_account_data
 from Uchat.model.account import Account
 from Uchat.ui.landingWindow import LandingWindow
+from Uchat.ui.menuBar import MenuBar, FileMenu
 
 
 def get_center_pos(widget: QWidget) -> QPoint:
@@ -39,11 +40,10 @@ class Application(QObject):
         self.__account = get_user_account_data()
 
         # Connect signals
-        self.__main_win.closeEvent = self.__handle_program_exit
-
         self.__generate_window(self.__account)
 
     def __del__(self):
+        self.__client.destroy()
         execute_closure_methods()
 
     def __generate_window(self, account: Optional[Account]):
@@ -65,6 +65,7 @@ class Application(QObject):
         # Load central widget
         landing_window = LandingWindow(self.__main_win, account, self.__client)
         self.__main_win.setCentralWidget(landing_window)
+        self.__main_win.setMenuBar(landing_window.menu_bar())
 
         sys.exit(self.__app.exec())
 
@@ -78,13 +79,6 @@ class Application(QObject):
     def free(self):
         del self.__main_win
 
-    def __handle_program_exit(self, event: QCloseEvent):
-        """
-        Free socket and send farewell to partners
-        """
-
-        self.__client.destroy()
-        QMainWindow.closeEvent(self.__main_win, event)
 
     def execute_boot_thread(self):
         self.__boot_thread.start()
