@@ -2,7 +2,6 @@ import sys
 from typing import Optional
 
 from PyQt5.QtCore import QSize, QPoint, QObject
-from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
 
 from Uchat.client import Client
@@ -11,7 +10,6 @@ from Uchat.helper.globals import WINDOW_TITLE
 from Uchat.helper.logger import get_user_account_data
 from Uchat.model.account import Account
 from Uchat.ui.landingWindow import LandingWindow
-from Uchat.ui.menuBar import MenuBar, FileMenu
 
 
 def get_center_pos(widget: QWidget) -> QPoint:
@@ -78,7 +76,6 @@ class Application(QObject):
 
     def free(self):
         del self.__main_win
-
 
     def execute_boot_thread(self):
         self.__boot_thread.start()

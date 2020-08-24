@@ -6,7 +6,7 @@ from typing import Optional
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtGui import QKeySequence
-from PyQt5.QtWidgets import QMenuBar, QMenu, QApplication, QDialog, QMessageBox, QVBoxLayout, QLabel
+from PyQt5.QtWidgets import QMenuBar, QMenu, QMessageBox
 
 from Uchat.helper.globals import LISTENING_PORT
 from Uchat.helper.logger import get_user_account_data

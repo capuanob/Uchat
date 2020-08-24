@@ -68,6 +68,7 @@ class LandingWindow(QWidget):
         self.__menu_bar.at_index(1).show_friends_signal.connect(lambda: self.__stack.setCurrentIndex(0))
         self.__menu_bar.at_index(1).show_conversations_signal.connect(lambda: self.__stack.setCurrentIndex(1))
         self.__menu_bar.at_index(0).application_quit_signal.connect(lambda: self.parent().close())
+
     def __build_main_view(self):
         # Set up left-side of splitter
 

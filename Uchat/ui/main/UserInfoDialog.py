@@ -10,6 +10,7 @@ from PyQt5 import QtCore
 from Uchat.peer import Peer
 from Uchat.ui.main.ProfilePhotoView import ProfilePhotoView
 
+
 class UserInfoDialog(QDialog):
     """
     This view is used to display information about a peer, whether it be a friend or the client
